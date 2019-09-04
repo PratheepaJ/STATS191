@@ -51,7 +51,7 @@ An introductory statistics course, such as
 
 ##  Course Overview
 
-Statistical tools for modern data analysis. Topics include regression and prediction, elements of the analysis of variance, bootstrap, and cross-validation. Emphasis is on conceptual rather than theoretical understanding. Applications to social/biological sciences. Student assignments require use of the software package [R](http://cran.r-project.org). 
+Statistical tools for modern data analysis. Topics include regression and prediction, elements of the analysis of variance, bootstrap, and cross-validation. Emphasis is on conceptual rather than theoretical understanding. Student assignments require use of the software package [R](http://cran.r-project.org). 
 
 ## Expected outcomes
 
@@ -68,7 +68,7 @@ By the end of the course, students should be able to:
 - Fit simple ANOVA models in [R](http://cran.r-project.org), treating them as special cases of multiple regression models.
 - Fit simple logistic and Poisson regression models.
 
-##  Texts
+##  Textbook
 - Required:
   - **(CH)** [Regression Analysis by Example](http://www1.aucegypt.edu/faculty/hadi/RABE5).
     - Authors: Samprit Chatterjee, Ali S. Hadi
@@ -88,7 +88,7 @@ By the end of the course, students should be able to:
 
 The final letter grade for this course will be determined by each method of assessment weighted as follows:
 
-- 6-7 weekly homework assignments  (55%)
+- 7 weekly homework assignments  (55%)
 - Midterm examination (15%, Wednesday, 10/23/2019)
 - Final examination (30%, according to Stanford calendar: Wednesday, 12/11/2019 @ 3:30 PM, location TBD)
 
@@ -131,10 +131,10 @@ The final letter grade for this course will be determined by each method of asse
 - Honor Code
     - Students are bound by the [Stanford Honor Code](https://communitystandards.stanford.edu/policies-and-guidance/honor-code). Violation of the honor code will result in a failing grade among other penalties.
     
-- Stanford Center for Professional Development (SC)
-  - Stats 191 is listed as one of the SCDP courses.
+- Stanford Center for Professional Development (SCPD)
+  - Stats 191 is listed as one of the SCPD courses.
   - Lecture recordings are being made and might be shared with others at Stanford beyond those currently enrolled in the class.
-  - SGDP policies on student privacy: __Video cameras located in the back of the room will capture the instructor presentations in this course. For your convenience, you can access these recordings by logging into the course Canvas site. These recordings might be reused in other Stanford courses, viewed by other Stanford students, faculty, or staff, or used for other education and research purposes. Note that while the cameras are positioned with the intention of recording only the instructor, occasionally a part of your image or voice might be incidentally captured. If you have questions, please contact a member of the teaching team.
+  - SCPD policies on student privacy: __Video cameras located in the back of the room will capture the instructor presentations in this course. For your convenience, you can access these recordings by logging into the course Canvas site. These recordings might be reused in other Stanford courses, viewed by other Stanford students, faculty, or staff, or used for other education and research purposes. Note that while the cameras are positioned with the intention of recording only the instructor, occasionally a part of your image or voice might be incidentally captured. If you have questions, please contact a member of the teaching team.__
 
 
 ## Topics 
@@ -175,9 +175,9 @@ The final letter grade for this course will be determined by each method of asse
 
 |Date|Week|Topic|Reading|Notes|
 |--|--|--|--|--|
-|**09/23/2019**|Week 1|Course introduction and review |Syllabus, lecture slides||
-|**09/25/2019**|Week 1|Review|**CH**: Chapter 1|lecture slides|
-|**09/27/2019**|Week 1|Some tips on R|lecture slides|**Homework 1 posted**|
+|**09/23/2019**|Week 1|Course introduction and review |Syllabus, Lecture notes ||
+|**09/25/2019**|Week 1|Review|**CH**: Chapter 1||
+|**09/27/2019**|Week 1|Some tips on R|Lecture notes|**Homework 1 posted**|
 |**09/30/2019**|Week 2|Simple linear regression 1 (introduction, correlation, model, estiamtion)|**CH**: Chapter 2.1-2.4|--|
 |**10/02/2019**|Week 2|Simple linear regression 2 (inference and prediction) |**CH**: Chapter 2.5-2.8|--|
 |**10/04/2019**|Week 2|Diagnostics for simple linear regression|**CH**: Chapter 2.9|**Homework 2 posted**, **Homework 1 Due**|
