@@ -1,0 +1,240 @@
+---
+title: "Lecture 10: Multiple linear regression"
+shorttitle: "STATS 191 Lecture 10"
+author: "Pratheepa Jeganathan"
+date: "10/14/2019"
+output: 
+  beamer_presentation:
+    colortheme: "seahorse"
+    slide_level: 2
+    includes:
+      in_header: header.tex
+bibliography: AppliedStat.bib
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 7, fig.height = 4, message=FALSE, warning=FALSE, cache = TRUE)
+set.seed(0)
+library(ggplot2)
+```
+
+
+## Recap
+
+- What is a regression model?
+- Descriptive statistics -- graphical
+- Descriptive statistics -- numerical
+- Inference about a population mean
+- Difference between two population means
+- Some tips on R
+
+## Recap
+
+- Simple linear regression (covariance, correlation, estimation, geometry of least squares)
+    - Inference on simple linear regression model
+    - Goodness of fit of regression: analysis of variance.
+    - $F$-statistics.
+    - Residuals.
+    - Diagnostic plots for simple linear regression (graphical methods).
+   
+# Multiple linear regression
+
+## Outline
+
+-   Specifying the model.
+-   Fitting the model: least squares.
+-   Interpretation of the coefficients.
+
+
+## Model 
+
+- Given a sample $Y_{i}, X_{i1}, X_{i2}, \cdots, X_{ip}, i = 1, 2, \cdots, n,$ the multiple linear regression model is 
+-  $$y_i = \underbrace{\beta_0 + \beta_1 x_{i1} + \dots + \beta_p x_{ip}}_{\E \left[ Y \vert X_{1}, \cdots, X_{2}\right]} + \epsilon_i,$$ where $i = 1, 2, \cdots, n.$
+    - $y_{i}$: $i$-th value of the response variable $Y$.
+    - $x_{ij}$: $j$-th predictor variable for the $i$-th unit.
+- Assumptions: 
+    - Errors $\epsilon$ are assumed independent $\text{N}\left(0,\sigma^2 \right)$, as in simple linear regression.
+- Coefficients are called *partial* regression coefficients because they “allow” for the effect of other variables.
+
+## Example (Prostate data)
+
+- For more information on the [\blc Gleason score\bc](http://en.wikipedia.org/wiki/Gleason_Grading_System).
+
+\begin{table}
+\begin{tabular}{|l|l|l|}
+\hline
+Variable & Notation &Description\\
+\hline
+lpsa & $Y$ &(log) Prostate Specific Antigen \\
+lcavol & $X_{1}$ & Cancer Volume\\
+lweight & $X_{2}$ & Weight\\
+age & $X_{3}$ & Patient age\\
+lbph & $X_{4}$ & (log) Vening Prostatic Hyperplasia\\
+svi & $X_{5}$ & Seminal Vesicle Invasion\\
+lcp &  $X_{6}$ & (log) Capsular Penetration \\
+gleason &  & Gleason score \\
+pgg45 & $X_{7}$ & Percent of Gleason score 4 or 5\\
+train &  & Label for test or training split\\
+\hline
+\end{tabular}
+\end{table}
+
+- We assume a linear model relating $Y$ and seven explanatory variables. $$Y = \beta_{0}+\beta_{1}X_{1} + \beta_{2}X_{2}+ \beta_{3}X_{3}+ \beta_{4}X_{5}+ \beta_{5}X_{5}+ \beta_{6}X_{6}+ \beta_{7}X_{7}+\epsilon.$$
+
+## Example
+- This data set is from the book [\blc The Elements of Statistical Learning\bc](http://web.stanford.edu/~hastie/ElemStatLearn/).
+```{r}
+# if not installed, install the package
+if(!("ElemStatLearn" %in% installed.packages())){
+  install.packages("ElemStatLearn")
+}
+```
+
+```{r}
+library(xtable)
+library(ElemStatLearn)
+data(prostate)
+```
+
+
+## Parameter estimation
+-   Just as in simple linear regression, model is fit by minimizing
+$$\text{SSE}(\beta_0, \dots, \beta_p) = \sum_{i=1}^n\left(Y_i - \left(\beta_0 + \sum_{j=1}^p \beta_j \
+X_{ij} \right) \right)^2$$
+- BY a direct application of calculus, it can be shown that the least squares estimators $\hat{\beta}_{0}, \hat{\beta}_{1}, \cdots, \hat{\beta}_{0p}$ are given by the solution of a system of linear equations known as *normal equation*.
+    - $\hat{\beta}_{0}$ is intercept (may or may not be $\bar{Y}$.)
+    - $\hat{\beta}_{j}$ is the estimate of the partial regression coefficient of the predictor $X_{j}$.
+    
+## Parameter estimation for the example
+```{r results = 'asis'}
+prostate.lm = lm(lpsa ~ lcavol + lweight + 
+    age + lbph + svi + lcp + pgg45, 
+  data = prostate)
+print(xtable(prostate.lm, digits = 3))
+```
+
+## Estimating $\sigma^2$
+
+- As in simple regression
+    $$\widehat{\sigma}^2 = \frac{SSE}{n-p-1}.$$
+ <!-- which is independent of $\widehat{\beta}$. -->
+- We can show that $$\dfrac{(n-p-1)\widehat{\sigma}^2}{ \sigma^2} \sim \chi^2_{n-p-1}$$
+
+- Why $\chi^2_{n-p-1}$? 
+    - Typically, the degrees of freedom in the estimate of $\sigma^2$ is $n-\# \text{number of parameters in regression function}$.
+
+
+## Estimating $\sigma^2$ for the example
+- The degrees of freedom  
+```{r}
+prostate.lm$df.resid
+```
+
+- Using the formula
+```{r}
+sigma.hat = sqrt(sum(resid(prostate.lm)^2)
+  /df.residual(prostate.lm))
+round(sigma.hat, digits = 3)
+```
+
+- OR
+```{r}
+round(sqrt(deviance(prostate.lm)/df.residual(prostate.lm)), digits = 3)
+```
+
+## Interpretation of regression coefficients $\beta_j$’s
+
+- Take $\beta_1=\beta_{\text{lcavol}}$ for example. This is the amount the average `lpsa` rating increases for one “unit” of increase in `lcavol`, keeping everything else constant.
+
+- We refer to this as the effect of `lcavol` *allowing for* or *controlling for* the other variables.
+ 
+## Example (interpretation of $\beta_j$)   
+- For example, let's take the 10th case in our data and change `lcavol` by 1 unit.
+```{r results='asis'}
+case10 = prostate[10,]
+print(xtable(case10))
+case10.temp = case10
+case10.temp['lcavol'] = 
+  case10.temp['lcavol'] + 1
+
+```
+
+## Example (interpretation of $\beta_j$) 
+```{r}
+Yhat = predict(prostate.lm, rbind(case10, case10.temp))
+names(Yhat) = c("lcavol_10", "lcavol_10+1")
+Yhat
+```
+
+- Our regression model says that this difference should be $\hat{\beta}_{\tt lcavol}$.
+
+```{r}
+c(Yhat[2]-Yhat[1], coef(prostate.lm)['lcavol'])
+```
+
+
+## Partial regression coefficients
+
+- The term *partial* refers to the fact that the coefficient $\beta_j$ represent the partial effect of $X_{j}$ on ${Y}$, i.e. after the effect of all other variables have been removed.
+    - Specifically, $$Y_{i} - \sum_{l=1, l \neq j}^{k} X_{il} \beta_{l} = \beta_0 + \beta_j X_{ij} + \varepsilon_i.$$
+
+- Let $e_{i,(j)}$ be the residuals from regressing ${Y}$ onto all ${X}_{\cdot}$’s except $X_{j}$, and let $X_{i,(j)}$ be the residuals from regressing $X_{j}$ onto all ${X}_{\cdot}$’s except $X_{j}$.
+    - $e_{i,(j)} = Y - (\hat{b}_{0} + \hat{b}_{1}X_{1}+\cdots+ \hat{b}_{j-1}X_{j-1}+\hat{b}_{j+1}X_{j+1}+\cdots+\hat{b}_{p}X_{p})$.
+    - $X_{i,(j)} = X_{j} - (\hat{a}_{0} + \hat{a}_{1}X_{1}+\cdots+ \hat{a}_{j-1}X_{j-1}+\hat{a}_{j+1}X_{j+1}+\cdots+\hat{a}_{p}X_{p})$.
+
+- If we regress $e_{i,(j)}$ against $X_{i,(j)}$, the coefficient is *exactly* the same as in the original model.
+    - $e_{i,(j)} = C_{0} + \beta_{j}X_{i,(j)} + \epsilon_{i}$.
+    
+## Example
+- Let's verify this interpretation of regression coefficients.
+
+```{r}
+partial_resid_lcavol = resid(lm(lcavol ~  lweight + 
+    age + lbph + svi + 
+    lcp + pgg45, data=prostate))
+partial_resid_lpsa = resid(lm(lpsa ~  lweight + 
+    age + lbph + svi + 
+    lcp + pgg45, data=prostate))
+```
+    
+##
+```{r results='asis'}
+print(xtable(summary(lm(partial_resid_lpsa ~
+    partial_resid_lcavol))))
+```
+
+## Centering and Scaling
+- Regression coefficient magnitude depends on the unit of measurements of the variable.
+    - If regression coefficient of income is 5.123 when measured in dollars, but 5123 when measured in $\$1000$.
+- To make regression coefficient unitless
+    - Can *center* and *scale* the variables.
+    
+## Centering and scaling for the intercept model
+- Centering $X_{j}-\bar{x}_{j}$ and $Y-\bar{y}$.
+- Scaling 
+    - Unit-length scaling: $$\tilde{Z}_{y} = \dfrac{Y-\bar{y}}{L_{y}}, L_{y} = \sqrt{\sum_{i=1}^{n}\left(y_{i} - \bar{y} \right)^2}$$ and $$\tilde{X}_{j} = \dfrac{X_{j}-\bar{x}_{j}}{L_{j}}, L_{j} = \sqrt{\sum_{i=1}^{n}\left(x_{ij} - \bar{x}_{j} \right)^2}, j=1,2,\cdots, p.$$
+    
+    - Standardizing: $$\tilde{Z}_{y} = \dfrac{Y-\bar{y}}{s_{y}}, s_{y} = \sqrt{\dfrac{\sum_{i=1}^{n}\left(y_{i} - \bar{y} \right)^2}{n-1}}$$ and $$\tilde{X}_{j} = \dfrac{X_{j}-\bar{x}_{j}}{s_{j}}, s_{j} = \sqrt{\dfrac{\sum_{i=1}^{n}\left(x_{ij} - \bar{x}_{j} \right)^2}{n-1}}, j = 1,2, \cdots, p.$$
+
+## Centering and scaling for the intercept model
+- Let $\hat{\theta}_{j}$ be the estimated regression coefficient for the standardized data.
+    - The estimated regression coefficient for the original data are $$\hat{\beta}_{j} = \dfrac{s_{y}}{s_{j}}\hat{\theta}_{j}, j = 1, 2, \cdots, p,$$ and $$\hat{\beta}_{0}=\bar{y}-\sum_{j=1}^{p}\hat{\beta}_{j}\bar{x}_{j}.$$
+- $\theta_{j}$ measures the change in standardized units of $Y$ corresponding to an increase of one standard deviation in $X_{j}$.
+    
+
+## Scaling for no-intercept model
+- Centering has an effect of including an intercept in the model.
+- Let $$Y = \beta_{1}X_{1}+\beta_{2}X_{2}+ \cdots+\beta_{p}X_{p} +\epsilon$$ be the no-intercept model.
+- Scaled variables are
+$$\tilde{Z}_{y} = \dfrac{Y}{L_{y}}, L_{y} = \sqrt{\sum_{i=1}^{n}y_{i}^2},$$ and $$\tilde{X}_{j} = \dfrac{X_{j}}{L_{j}}, L_{j} = \sqrt{\sum_{i=1}^{n}x_{ij}^2}, j = 1,2, \cdots, p.$$
+
+##  References for this lecture
+
+- **CH** Chapter 3.1-3.6
+- Lecture notes of  [\blc Jonathan Taylor \bc](http://statweb.stanford.edu/~jtaylo/).
+
+
+
+
+

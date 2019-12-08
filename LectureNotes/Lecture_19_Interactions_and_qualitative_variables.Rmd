@@ -1,0 +1,510 @@
+---
+title: "Lecture 19: Qualitative variables as predictors and Interactions"
+shorttitle: "STATS 191 Lecture 19"
+author: "Pratheepa Jeganathan"
+date: "11/04/2019"
+output: 
+  beamer_presentation:
+    colortheme: "seahorse"
+    slide_level: 2
+    includes:
+      in_header: header.tex
+bibliography: AppliedStat.bib
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 7, fig.height = 4, message=FALSE, warning=FALSE)
+set.seed(0)
+library(ggplot2)
+```
+
+
+## Recap
+
+- What is a regression model?
+- Descriptive statistics -- graphical
+- Descriptive statistics -- numerical
+- Inference about a population mean
+- Difference between two population means
+- Some tips on R
+- Simple linear regression (covariance, correlation, estimation, geometry of least squares)
+    - Inference on simple linear regression model
+    - Goodness of fit of regression: analysis of variance.
+    - $F$-statistics.
+    - Residuals.
+    - Diagnostic plots for simple linear regression (graphical methods).
+
+## Recap
+- Multiple linear regression
+    - Specifying the model.
+    - Fitting the model: least squares.
+    - Interpretation of the coefficients.
+    - Matrix formulation of multiple linear regression
+    - Inference for multiple linear regression
+        - $T$-statistics revisited.
+        - More $F$ statistics.
+        - Tests involving more than one $\beta$.   
+- Diagnostics – more on graphical methods and numerical methods
+    - Different types of residuals
+    - Influence
+    - Outlier detection
+    - Multiple comparison (Bonferroni correction)
+    - Residual plots:
+        - partial regression (added variable) plot,
+        - partial residual (residual plus component) plot.
+    
+## Outline
+- Qualitative variables as predictors to the regression model (**CH**: Chapter 5)
+- Adding interactions to the linear regression model. 
+
+#  Qualitative variables and Interactions
+
+## Introduction (Qualitative variables)
+
+- Most predictor variables we have looked at so far were continuous: `height`, `rating`, etc.
+
+- In many situations, we record a categorical variable: `gender`, `state`, `country`, etc.
+
+- We call these variables *categorical* or *qualitative* variables.
+    - In `R`, these are referred to as `factors`.
+
+- For our purposes, we want to answer: **How do we include this in our model?**
+
+- This will eventually lead us to the notion of *interactions* and some special regression models called *ANOVA* (analysis of variance) models.
+
+## Two-sample problem
+
+- In some sense, we have already seen a regression model with categorical variables: the two-sample model.
+
+- Two sample problem with equal variances: suppose
+$Z_j \sim N(\mu_1, \sigma^2), 1 \leq j \leq m$ and
+$W_l \sim N(\mu_2, \sigma^2), 1 \leq l \leq n$.
+
+- For $1 \leq i \leq (m+n)$, let 
+$$X_i = \begin{cases}
+1 & \text{if} \hspace{.1in} i \hspace{.1in} \text{is one of} \hspace{.1in} j  \\
+0 & \text{otherwise.}
+\end{cases}$$
+
+## Two-sample problem
+- The design matrix and response look like
+$$\vY_{(n+m) \times 1} = 
+\begin{pmatrix}
+Z_1 \\
+\vdots \\
+Z_m \\
+W_1 \\
+\vdots \\
+W_n \\
+\end{pmatrix}, \qquad
+\mX_{(n+m) \times 2} =
+ \begin{pmatrix}
+1 & 1 \\
+ \vdots & \vdots \\
+1 & 1 \\
+1 & 0 \\
+\vdots & \vdots \\
+1 & 0
+\end{pmatrix}$$
+
+- The regression model is $$\vY = \mX\vbeta + \vep,$$ where $\vbeta = \begin{pmatrix}\beta_{0}\\ \beta_{1} \end{pmatrix}$.
+
+## Salary example (**CH** Page 130)
+
+- In this example, we have data on salaries of employees in IT (several years ago?) based on their years of experience, their
+education level and whether or not they are management.
+
+- Outcome: `S`, salaries for IT staff in a corporation.
+
+- Predictors: 
+    - `X`, experience (years)
+    - `E`, education (1=High school diploma, 2= B.S., 3= Advanced degree)
+    - `M`, management (1=management responsibility, 0=not management)
+- Goal: Measure the effects of experience, education, and management on salary using regression analysis.    
+
+## Salary example
+```{r}
+url = 'http://stats191.stanford.edu/data/salary.table'
+salary.table = read.table(url, header=T)
+salary.table$E = factor(salary.table$E)
+salary.table$M = factor(salary.table$M)
+```
+
+
+## Salary example
+- Let's take a quick look at how `R` treats a `factor`
+
+```{r}
+str(salary.table$E)
+```
+
+
+## Salary example
+
+- Let's take a look at the data. 
+    - We will use triangles for management, diamonds for non-management
+    - red for education=1, green for education = 2 and blue for education=3.
+
+## Salary example
+
+```{r}
+p = ggplot(data = salary.table, aes(x = X, y = S, 
+  shape = M, col = E, fill = E)) + 
+  geom_point(size = 3) + 
+  scale_shape_manual(values = c(23,24))+
+  scale_color_manual(values = c("red", 
+    "green", "blue")) + 
+  xlab("Experience") +
+  ylab("Salary")
+```
+  
+  
+## Salary example 
+```{r echo=FALSE}
+p
+```
+
+## Salary example 
+- If we 
+    - assume a linear relationship between salary and experience (each additional year of experience is worth a fixed salary increment)
+    - add raw education (1,2,3) to the model (each step-up in education is worth a fixed increment in salary)
+        - this interpretation is too restrictive.
+        - will consider education as a categorical variable with three levels (or categories)
+        
+- Effect of experience on salary
+    - In these pictures, the slope of each line seems to be about the same. 
+    - How might we estimate it?
+
+## Salary example 
+- One solution is *stratification*.
+    - Make six separate models (one for each combination of `E` and `M`) and estimate the slope.
+        - We have few degrees of freedom in each group.
+
+## Salary example 
+- Or, use *qualitative* variables
+    - IF it is reasonable to assume that $\sigma^2$ is constant for each observation.
+    - THEN, we can incorporate all observations into 1 model. $$S_i = \beta_0 + \beta_1 X_i + \beta_2 E_{i2} + \beta_3 E_{i3} + \beta_4 M_i + \varepsilon_i$$
+
+- Above, the variables are:
+$$
+E_{i2} = \begin{cases}
+1 & \text{if $E_i$=2} \\
+0 & \text{otherwise.}
+\end{cases}
+$$
+
+$$
+E_{i3} = \begin{cases}
+1 & \text{if $E_i$=3} \\
+0 & \text{otherwise.}
+\end{cases}
+$$
+
+## Use *qualitative* variables 
+
+- Notes
+    - Although $E$ has 3 levels, we only added 2 variables to the model.
+        - In a sense, this is because `(Intercept)` (i.e. $\beta_0$) absorbs one level.
+    
+    - If we added three variables then the columns of design matrix would be linearly dependent so we would NOT have a unique least squares solution.
+
+    - Assumes $\beta_1$ – effect of experience is the same in all groups, unlike when we fit the model separately. 
+        - This may or may not be reasonable.
+        
+## Use *qualitative* variables 
+- According to the model $$S_i = \beta_0 + \beta_1 X_i + \beta_2 E_{i2} + \beta_3 E_{i3} + \beta_4 M_i + \varepsilon_i$$
+    - the indicator variables determine the base salary level as a function of education and management status after adjustment for years of experience.
+    - $\beta_{2}$ measures the salary differential for the B.S. relative to the H.S. (every fixed level of experience and management)
+    - $\beta_{3}$ measures the salary differential for the A.D. relative to the H.S. (every fixed level of experience and management)
+    - $\beta_{3}-\beta_{2}$ measures the salary differential for the A.D. relative to the B.S. (every fixed level of experience and management)
+    - $\beta_{4}$ measures the average incremental value in salary associated with a management position (every fixed level of experience and education)
+    
+## Salary example 
+```{r }
+salary.lm = lm(S ~ E + M + X, salary.table)
+#summary(salary.lm)
+```
+
+```{r echo=FALSE,out.width = "200px"}
+knitr::include_graphics("Lecture_19_salary_lm_1.png")
+```
+
+## Salary example 
+- Now, let's take a look at our design matrix
+
+```{r}
+head(model.matrix(salary.lm))
+```
+
+- Comparing to our actual data, we can understand how the columns above were formed. 
+    - They were formed just as we had defined them above.
+
+## Salary example 
+```{r}
+head(model.frame(salary.lm))
+head(data.frame(model.frame(salary.lm),
+  model.matrix(salary.lm)), 4)
+```
+ 
+## Diagnostics
+- Assumed that $\sigma^2$ is constant for each observation.
+- Let us check the diagnostics plot.
+```{r}
+plot(salary.lm, add.smooth = FALSE, which = 1)
+```
+
+
+
+## Interactions
+
+- Our model has enforced the constraint the $\beta_1$  (Effect of experience) is the same within each group.
+
+<!-- - Graphically, this seems OK, but how can we test this? -->
+
+- We could fit a model with different slopes in each group, but keeping as many degrees of freedom as we can.
+
+- This model has *interactions* in it: the effect of experience depends on what level of education you have.
+
+## Interaction between experience and education
+
+- Model: $$\begin{aligned} 
+S_i &= \beta_0 + \beta_1 X_i + \beta_2 E_{i2} + \beta_3 E_{i3} +
+ \beta_4 M_i \\
+       & \qquad  + \beta_5 E_{i2} X_i + \beta_6 E_{i3} X_i + \varepsilon_i.
+       \end{aligned}$$
+       
+- What is the regression function within each group?
+
+- Note that we took each column corresponding to education and multiplied it by the column for experience to get two new predictors.
+
+- To test whether the slope is the same in each group we would just test $H_0:\beta_5 = \beta_6=0$.
+
+- Based on figure, we expect not to reject $H_0$.
+
+##  Interaction between experience and education
+```{r}
+model_XE = lm(S~ E + M + X + X:E, salary.table)
+#summary(model_XE)
+```
+
+
+```{r echo=FALSE,out.width = "200px"}
+knitr::include_graphics("Lecture_19_salary_interaction_lm.png")
+```
+
+## Testing $H_0:\beta_5 = \beta_6=0$
+
+```{r}
+anova(salary.lm, model_XE)
+```
+
+- The notation `X:E` denotes an *interaction*. 
+    - Generally, `R` will take the columns added for `E` and the columns added for `X` and add their element wise product (Hadamard product) to the design martrix.
+
+## Interaction in the model
+- Let's look at our design matrix again to be sure we understand what model was fit.
+
+```{r}
+model.matrix(model_XE)[10:20,]
+```
+
+## Diagnostics (Interaction between experience and education)
+```{r}
+plot(model_XE, add.smooth = FALSE, which = 1)
+```
+
+
+## Interaction between management and education
+
+- We can also test for interactions between qualitative variables.
+
+- In our plot, note that B.S in management make more than A.D. in management, but this difference disappears in non-management.
+```{r echo=FALSE}
+p
+```
+
+## Interaction between management and education
+
+- This means the effect of education is different in the two management levels. This is evidence of an *interaction*.
+
+- To see this, we plot the residuals within groups separately.
+```{r}
+salary.lm = lm(S ~ E + M + X, salary.table)
+df = data.frame(salary.table, res = resid(salary.lm))
+df$group = paste(df$E, df$M)
+```
+
+
+## Interaction between management and education
+```{r}
+p1 = ggplot(data = df, aes(x = group, y = res, 
+  shape = M, col = E, fill = E, group = group)) + 
+  geom_point(size = 3) + 
+  scale_shape_manual(values = c(23,24))+
+  scale_color_manual(values = c("red", 
+    "green", "blue")) + 
+  xlab("Experience") +
+  ylab("Residual")
+```
+
+
+## Interaction between management and education
+```{r echo=FALSE}
+p1
+```
+
+## Interaction plot in R
+
+- R has a special plot that can help visualize this effect, called an interaction.plot.
+
+```{r}
+interaction.plot(salary.table$E, 
+  salary.table$M, resid(salary.lm), type='b', 
+  col=c('red','blue'), lwd=2, pch=c(23,24))
+```
+
+## Interaction between management and education
+
+- Based on figure, we expect an interaction effect.
+
+- Fit model $$\begin{aligned}
+       S_i &= \beta_0 + \beta_1 X_i + \beta_2 E_{i2} + \beta_3 E_{i3} +\
+ \beta_4 M_i \\
+       & \qquad  + \beta_5 E_{i2} M_i + \beta_6 E_{i3} M_i + \varepsilon_i.
+       \end{aligned}$$
+
+-   Again, testing for interaction is testing $H_0:\beta_5=\beta_6=0.$
+
+- What is the regression function within each group?
+
+## Interaction between management and education
+```{r}
+model_EM = lm(S ~ X + E:M + E + M, 
+  salary.table)
+##summary(model_EM)
+```
+
+```{r echo=FALSE,out.width = "200px"}
+knitr::include_graphics("Lecture_19_lm_salary_EM.png")
+```
+
+## Interaction between management and education
+- Testing for interaction is testing $H_0:\beta_5=\beta_6=0.$
+```{r}
+anova(salary.lm, model_EM)
+```
+
+- We reject the null hypothesis.
+
+## Interaction between management and education
+Let's look at our design matrix again to be sure we understand what model was fit.
+
+```{r}
+head(model.matrix(model_EM))
+```
+
+## Diagnostics
+- We will plot the residuals as functions of experience with each *experience* and *management* having a different symbol/color.
+
+```{r}
+df2 = data.frame(salary.table, rs = rstandard(model_EM))
+df2$group = paste(df2$E, df2$M)
+
+p2 = ggplot(data = df2, aes(x = X, y = rs, 
+  shape = M, col = E, fill = E, group = group)) + 
+  geom_point(size = 3) + 
+  scale_shape_manual(values = c(23,24))+
+  scale_color_manual(values = c("red", 
+    "green", "blue")) + 
+  xlab("Experience") +
+  ylab("Standardized Residual")
+```
+
+
+## Diagnostics
+- One observation seems to be an outlier.
+
+```{r echo=FALSE}
+p2
+```
+
+## Outlier detection
+```{r}
+library(car)
+outlierTest(model_EM)
+```
+
+## Refit the model
+- Let's refit our model to see that our conclusions are not vastly different.
+
+```{r}
+subs33 = c(1:length(salary.table$S))[-33]
+salary.lm33 = lm(S ~ E + X + M, 
+  data=salary.table, subset=subs33)
+model_EM33 = lm(S ~ E + X + E:M + M, 
+  data=salary.table, subset=subs33)
+anova(salary.lm33, model_EM33)
+```
+
+## Diagnostics (refitted model)
+```{r}
+df3 = data.frame(salary.table[-33,], rs = rstandard(model_EM33))
+df3$group = paste(df3$E, df3$M)
+
+p3 = ggplot(data = df3, aes(x = X, y = rs, 
+  shape = M, col = E, fill = E, group = group)) + 
+  geom_point(size = 3) + 
+  scale_shape_manual(values = c(23,24))+
+  scale_color_manual(values = c("red", 
+    "green", "blue")) + 
+  xlab("Experience") +
+  ylab("Standardized Residual")
+```
+
+## Diagnostics (refitted model)
+- Looks good!
+```{r echo=FALSE}
+p3
+```
+
+
+## Plot the fitted regression
+```{r echo=FALSE}
+salaryfinal.lm = lm(S ~ X + E * M, salary.table, subset=subs33)
+mf = model.frame(salaryfinal.lm)
+plot(mf$X, mf$S, type='n', xlab='Experience', ylab='Salary')
+colors <- c('red', 'green', 'blue')
+ltys <- c(2,3)
+symbols <- c(23,24)
+for (i in 1:3) {
+    for (j in 0:1) {
+        subset <- as.logical((mf$E == i) * (mf$M == j))
+        points(mf$X[subset], mf$S[subset], pch=symbols[j+1], bg=colors[i], cex=2)
+        lines(mf$X[subset], fitted(salaryfinal.lm)[subset], lwd=2, lty=ltys[j], col=colors[i])
+    }
+}
+```
+
+## Visualizing an interaction
+
+- From our first look at the data, the difference between 
+B.S. and A.D in the management group is different than in the non-management group. 
+    - This is an interaction between the two qualitative
+variables *management,M* and *education,E*. 
+    - We can visualize this by first removing the effect of experience, then plotting the means within each of the 6 groups using *interaction.plot*.
+
+## Visualizing an interaction
+```{r}
+U = salary.table$S - salary.table$X * model_EM$coef['X']
+interaction.plot(salary.table$E, salary.table$M, U, 
+  type='b', col=c('red', 'blue'), 
+  lwd=2, pch=c(23,24))
+
+```
+
+
+## Reference
+
+- **CH**: Chapter 5.
+- Lecture notes of  [\blc Jonathan Taylor \bc](http://statweb.stanford.edu/~jtaylo/).

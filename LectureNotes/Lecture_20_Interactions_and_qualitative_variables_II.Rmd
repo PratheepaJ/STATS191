@@ -1,0 +1,342 @@
+---
+title: "Lecture 20: Qualitative variables as predictors and Interactions II"
+shorttitle: "STATS 191 Lecture 20"
+author: "Pratheepa Jeganathan"
+date: "11/06/2019"
+output: 
+  beamer_presentation:
+    colortheme: "seahorse"
+    slide_level: 2
+    includes:
+      in_header: header.tex
+bibliography: AppliedStat.bib
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 7, fig.height = 4, message=FALSE, warning=FALSE, cache = TRUE)
+set.seed(0)
+library(ggplot2)
+```
+
+
+## Recap
+
+- What is a regression model?
+- Descriptive statistics -- graphical
+- Descriptive statistics -- numerical
+- Inference about a population mean
+- Difference between two population means
+- Some tips on R
+- Simple linear regression (covariance, correlation, estimation, geometry of least squares)
+    - Inference on simple linear regression model
+    - Goodness of fit of regression: analysis of variance.
+    - $F$-statistics.
+    - Residuals.
+    - Diagnostic plots for simple linear regression (graphical methods).
+
+## Recap
+- Multiple linear regression
+    - Specifying the model.
+    - Fitting the model: least squares.
+    - Interpretation of the coefficients.
+    - Matrix formulation of multiple linear regression
+    - Inference for multiple linear regression
+        - $T$-statistics revisited.
+        - More $F$ statistics.
+        - Tests involving more than one $\beta$.   
+- Diagnostics – more on graphical methods and numerical methods
+    - Different types of residuals
+    - Influence
+    - Outlier detection
+    - Multiple comparison (Bonferroni correction)
+    - Residual plots:
+        - partial regression (added variable) plot,
+        - partial residual (residual plus component) plot.
+        
+## Recap
+- Adding qualitative predictors 
+    - Qualitative variables as predictors to the regression model.
+    - Adding interactions to the linear regression model. 
+
+
+#  Qualitative variables and Interactions
+
+## Outline
+- Analyzing and testing for equality of regression relationship in various subsets of a population.
+
+
+## Note
+
+- Additive model - no interaction
+- Multiplicative model - with interaction
+- Start with a simple model and proceed sequentially to more complex model (try to retain the simplest model that has an acceptable residual structure)
+- There are situation that we need to fit regression sepeartly for subsets.
+    - analyzing and testing for equality of regression relationship in various subsets of a population.
+
+## Jobtest employment data (**CH** Page 138)
+
+- We look at an example of a dataset concerning equal opportunity in employment.
+    - Suppose there is an aptitude test to screen job applicants.
+    - The test measures the applicant's aptitude for the job and shouldn't discriminate by race.
+    - We considered a variable that indicates the race, either "White" or "Minority."
+    - Let's use the dataset to analyze the implication of the hypothesis for discrimination in hiring.
+
+\begin{tabular}{|l|l|}
+\hline
+Variable &	Description\\
+\hline 
+TEST  &	Job aptitude test score\\
+MINORITY &	1 if applicant could be considered minority, 0 otherwise \\
+PERF &	Job performance evaluation\\
+\hline
+\end{tabular}
+
+## Jobtest employment data 
+```{r}
+url = 'http://stats191.stanford.edu/data/jobtest.table'
+jobtest.table = read.table(url, header=T)
+jobtest.table$MINORITY = factor(jobtest.table$MINORITY)
+```
+
+## Jobtest employment data 
+```{r}
+p = ggplot(data = jobtest.table, aes(x = TEST, y = JPERF, 
+  shape = MINORITY, col = MINORITY, fill = MINORITY)) + 
+  geom_point(size = 3) + 
+  scale_shape_manual(values = c(21,25))+
+  scale_color_manual(values = c("purple", 
+    "green")) + 
+  xlab("TEST") +
+  ylab("JPERF")
+```
+
+## Jobtest employment data 
+```{r echo=FALSE}
+p
+```
+
+## General model
+
+- In theory, there may be a linear relationship between $JPERF$ and $TEST$ but it could be different by group.
+
+- Model: 
+$$JPERF_i = \beta_0 + \beta_1 TEST_i + \beta_2 MINORITY_i + \beta_3 MINORITY_i * TEST_i + \varepsilon_i.$$
+
+-   Regression functions:
+   $$Y_i =
+   \begin{cases}
+   \beta_0 + \beta_1 TEST_i + \varepsilon_i & \text{if $MINORITY_i$=0} \\
+   (\beta_0 + \beta_2) + (\beta_1 + \beta_3) TEST_i + \varepsilon_i & \text{if 
+$MINORITY_i=1$.} \\
+   \end{cases}$$
+
+
+## Our first model: ($\beta_2=\beta_3=0$)
+
+- This has no effect for `MINORITY`.
+
+```{r}
+jobtest.lm1 = lm(JPERF ~ TEST, jobtest.table)
+#summary(jobtest.lm1)
+```
+
+```{r echo=FALSE,out.width = "200px"}
+knitr::include_graphics("Lecture_20_jobtest_lm1.png")
+```
+
+## The first model: ($\beta_2=\beta_3=0$)
+```{r}
+plot(jobtest.lm1, add.smooth = FALSE, which = 1)
+```
+
+
+
+## The first model: ($\beta_2=\beta_3=0$)
+```{r}
+p + geom_abline(intercept = jobtest.lm1$coef[1],
+  slope = jobtest.lm1$coef[2], 
+  lwd=3, col='blue')
+```
+
+
+## Our second model ($\beta_3=0$)
+
+- This model allows for an effect of `MINORITY` but no interaction between `MINORITY` and `TEST`.
+
+```{r}
+jobtest.lm2 = lm(JPERF ~ TEST + MINORITY, 
+  data = jobtest.table)
+#summary(jobtest.lm2)
+```
+
+```{r echo=FALSE,out.width = "200px"}
+knitr::include_graphics("Lecture_20_jobtest_lm2.png")
+```
+
+## The second model ($\beta_3=0$)
+```{r}
+plot(jobtest.lm2, add.smooth = FALSE, which = 1)
+```
+
+
+## The second model ($\beta_3=0$)
+```{r}
+p2 = p + geom_abline(intercept =
+    jobtest.lm2$coef['(Intercept)'],
+  slope = jobtest.lm2$coef['TEST'], 
+  lwd=3, col='purple') + 
+  geom_abline(intercept = 
+      (jobtest.lm2$coef['(Intercept)'] +
+      jobtest.lm2$coef['MINORITY1']),
+  slope = jobtest.lm2$coef['TEST'], 
+  lwd=3, col='green')
+```
+
+
+## The second model ($\beta_3=0$)
+```{r}
+p2
+```
+
+
+## Our third model $(\beta_2=0)$
+
+- This model includes an interaction between `TEST` and `MINORITY`. 
+- These lines have the same intercept but possibly different slopes within the `MINORITY` groups.
+
+```{r}
+jobtest.lm3 = lm(JPERF ~ TEST + TEST:MINORITY, 
+  data = jobtest.table)
+#summary(jobtest.lm3)
+```
+
+```{r echo=FALSE, out.width = "200px"}
+knitr::include_graphics("Lecture_20_jobtest_lm3.png")
+```
+
+## The third model $(\beta_2=0)$
+```{r}
+plot(jobtest.lm3, add.smooth = FALSE, which = 1)
+```
+
+
+## The third model $(\beta_2=0)$
+```{r}
+p3 = p + geom_abline(intercept =
+    jobtest.lm3$coef['(Intercept)'],
+  slope = jobtest.lm3$coef['TEST'], 
+  lwd=3, col='purple') + 
+  geom_abline(intercept = 
+      jobtest.lm3$coef['(Intercept)'],
+  slope = 
+      (jobtest.lm3$coef['TEST'] +
+          jobtest.lm3$coef['TEST:MINORITY1']), 
+  lwd=3, col='green')
+```
+
+## The third model $(\beta_2=0)$
+```{r}
+p3
+```
+
+## Our final model: no constraints
+
+- This model allows for different intercepts and different slopes.
+- The expression `TEST*MINORITY` is shorthand for `TEST + MINORITY + TEST:MINORITY`.
+```{r}
+jobtest.lm4 = lm(JPERF ~ TEST * MINORITY, 
+  data = jobtest.table)
+#summary(jobtest.lm4)
+```
+
+```{r echo=FALSE, out.width = "200px"}
+knitr::include_graphics("Lecture_20_jobtest_lm4.png")
+```
+
+
+## The final model
+```{r}
+plot(jobtest.lm4, add.smooth = FALSE, which = 1)
+```
+
+
+## The final model
+```{r}
+p4 = p + geom_abline(intercept =
+    jobtest.lm4$coef['(Intercept)'],
+  slope = jobtest.lm4$coef['TEST'], 
+  lwd=3, col='purple') + 
+  geom_abline(intercept = 
+      (jobtest.lm4$coef['(Intercept)'] +
+          jobtest.lm4$coef['MINORITY1']),
+  slope = 
+      (jobtest.lm4$coef['TEST'] +
+          jobtest.lm4$coef['TEST:MINORITY1']), 
+  lwd=3, col='green')
+```
+
+## The final model
+```{r}
+p4
+```
+
+## Comparing models
+- We can use F test statistic.
+- Is there any effect of MINORITY on slope or intercept?
+
+```{r}
+# ~ TEST vs. ~ TEST * MINORITY
+anova(jobtest.lm1, jobtest.lm4) 
+```
+
+## Comparing models
+
+- Is there any effect of MINORITY on intercept? (Assuming we have accepted the hypothesis that the slope is the same within
+each group).
+
+```{r}
+# ~ TEST vs. ~ TEST + MINORITY
+anova(jobtest.lm1, jobtest.lm2) 
+```
+
+## Comparing models
+- We could also have allowed for the possiblity that the slope is different within each group and still check for a different intercept.
+
+```{r}
+# ~ TEST + TEST:MINORITY vs. 
+# ~ TEST * MINORITY
+anova(jobtest.lm3, jobtest.lm4) 
+```
+
+##  Comparing models
+- Is there any effect of `MINORITY` on slope?  (Assuming we have accepted the hypothesis that the intercept is the same within each
+group).
+
+```{r}
+# ~ TEST vs. ~ TEST + TEST:MINORITY
+anova(jobtest.lm1, jobtest.lm3) 
+```
+
+##  Comparing models
+- Again, we could have allowed for the possibility that the intercept is different within each group.
+
+```{r}
+# ~ TEST + MINORITY vs. 
+# # ~ TEST * MINORITY
+anova(jobtest.lm2, jobtest.lm4) 
+```
+
+##  Comparing models
+- In summary, taking the several tests into account here, there does seem to be some evidence that the slope is different within the two groups.
+
+## Model selection
+
+- Already with this simple dataset (simpler than the IT salary data) we have 4 competing models. 
+- How are we going to arrive at a final model? 
+- This highlights the need for *model selection*. (**CH** Chapter 11)
+
+## Reference
+
+- **CH**: Chapter 5.4-5.7.
+- Lecture notes of  [\blc Jonathan Taylor \bc](http://statweb.stanford.edu/~jtaylo/).

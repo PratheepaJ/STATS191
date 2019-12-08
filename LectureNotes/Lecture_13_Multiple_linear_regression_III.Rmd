@@ -1,0 +1,348 @@
+---
+title: "Lecture 13: Multiple linear regression"
+shorttitle: "STATS 191 Lecture 13"
+author: "Pratheepa Jeganathan"
+date: "10/21/2019"
+output: 
+  beamer_presentation:
+    colortheme: "seahorse"
+    slide_level: 2
+    includes:
+      in_header: header.tex
+bibliography: AppliedStat.bib
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 7, fig.height = 4, message=FALSE, warning=FALSE, cache = TRUE)
+set.seed(0)
+library(ggplot2)
+```
+
+
+## Recap
+
+- What is a regression model?
+- Descriptive statistics -- graphical
+- Descriptive statistics -- numerical
+- Inference about a population mean
+- Difference between two population means
+- Some tips on R
+
+## Recap
+
+- Simple linear regression (covariance, correlation, estimation, geometry of least squares)
+    - Inference on simple linear regression model
+    - Goodness of fit of regression: analysis of variance.
+    - $F$-statistics.
+    - Residuals.
+    - Diagnostic plots for simple linear regression (graphical methods).
+
+## Recap
+- Multiple linear regression
+    - Specifying the model.
+    - Fitting the model: least squares.
+    - Interpretation of the coefficients.
+   
+
+## Outline
+
+- Inference for multiple regression
+    - $T$-statistics revisited.
+    - More $F$ statistics.
+    - Tests involving more than one $\beta$.
+
+# Inference for multiple regression
+
+## Regression function at one point 
+
+- One thing one might want to *learn* about the regression function in the prostate example is something about the regression function at some fixed values of ${X}_{1}, \dots, {X}_{7}$, i.e. what can be said about the mean response
+    $$
+ \begin{aligned}
+  \beta_0 + 1.3 \cdot \beta_1  &+ 3.6 \cdot \beta_2  + 64 \cdot \beta_3 + \\
+    0.1 \cdot \beta_4 &+ 0.2 \cdot \beta_5 - 0.2 \cdot \beta_6 + 25 \cdot \beta_7  
+   \end{aligned}$$
+    roughly the regression function at “typical” values of the
+    predictors.
+
+- The expression above is equivalent to
+    $$\sum_{j=0}^{7} a_j \beta_j  = \va^{T}\vbeta, \qquad \va=(1,1.3,3.6,64,0.1,0.2,-0.2,25).$$
+
+## Confidence interval for $\sum_{j=0}^{p} a_j \beta_j$
+
+-   Suppose we want a $(1-\alpha)\cdot 100\%$ CI for
+    $\sum_{j=0}^{p} a_j\beta_j$.
+-   Just as in simple linear regression:
+$$\sum_{j=0}^{p} a_j \widehat{\beta}_j \pm t_{1-\alpha/2, n-p-1} \cdot SE\left(\sum_{j=0}^p a_j\widehat{\beta}_j\right).$$
+
+## Standard error of $\sum_{j=0}^p a_j \widehat{\beta}_j$
+
+- In order to form these confidence interval, we need the $SE$ of our estimate $\sum_{j=0}^p a_j \widehat{\beta}_j$.
+
+- Based on matrix approach to regression
+$$\begin{aligned}\text{SE}\left(\sum_{j=0}^p a_j\widehat{\beta}_j \right) = \text{SE}\left(\va^T\widehat{\beta} \right) = \sqrt{\text{Cov}\left(\va^{T}\widehat{\beta} \right)} = & \sqrt{\va^{T}\text{Cov}\left(\widehat{\beta}\right)\va}\\
+    = & \sqrt{\widehat{\sigma}^2 \va^T (X^TX\
+)^{-1} \va} \end{aligned}$$
+
+.
+-   Don’t worry too much about specific implementation – for much of the effects we want `R` will do this for you in general.
+
+## Example 
+```{r}
+library(xtable)
+library(ElemStatLearn)
+data(prostate)
+prostate.lm = lm(lpsa ~ lcavol + lweight + 
+    age + lbph + svi + lcp + pgg45, 
+  data = prostate)
+n = nrow(prostate)
+Y = prostate$lpsa
+X = model.matrix(prostate.lm)
+beta_hat = as.numeric(solve(t(X) %*% X) 
+  %*% t(X) %*% Y)
+names(beta_hat) = colnames(X)
+
+```
+
+##
+```{r}
+Y.hat = X %*% beta_hat
+sigma.hat = sqrt(sum((Y - Y.hat)^2) 
+  / (n - ncol(X)))
+cov.beta_hat = sigma.hat^2 * solve(t(X) %*% X)
+```
+
+##
+```{r results = 'asis'}
+print(xtable(data.frame(cov.beta_hat), digits = 4),
+scalebox='0.6')
+```
+
+- The standard error of regression function estimate at $\va=(1,1.3,3.6,64,0.1,0.2,-0.2,25)$ is  $\sqrt{\va^{T}\text{Cov}\left(\widehat{\beta}\right)\va}$
+```{r}
+a = c(1,1.3,3.6,64,0.1,0.2,-0.2,25)
+sqrt(t(a)%*%cov.beta_hat%*%a)
+```
+
+## 
+- The standard errors of each coefficient estimate are the square root of the diagonal entries. 
+
+```{r}
+round(sqrt(diag(cov.beta_hat)), digits = 4)
+```
+
+##
+
+- Generally, we can find our estimate of the covariance function $\text{Cov}\left(\hat{\vbeta} \right)$ as follows:
+
+```{r results='asis'}
+print(xtable(vcov(prostate.lm), digits = 4), 
+  scalebox='0.6')
+```
+
+## Example (confidence interval for regression at a given point)
+
+```{r}
+library(ElemStatLearn)
+data(prostate)
+prostate.lm = lm(lpsa ~ lcavol + lweight + 
+    age + lbph + svi + lcp + pgg45, 
+  data = prostate)
+```
+
+## Example (confidence interval for regression at a given point)
+
+- `R` will form these coefficients ($\va$) for each regression coefficient separately when using the `confint` function.
+- If we have an observation, $X_{1} = 1.3, X_{2} = 3.6, X_{3} = 64,$ $X_{4} = 0.1, X_{5} = 0.2, X_{6} = -0.2, X_{7} = 25.$
+- We can write $\va = \left(1.3, 3.6, 64, 0.1, 0.2, -0.2,  25\right).$
+- 
+```{r}
+predict(prostate.lm, list(lcavol = 1.3, lweight = 3.6, 
+  age = 64, lbph = 0.1, 
+  svi = 0.2, lcp = -.2, pgg45 = 25), 
+  interval='confidence', 
+  level=0.90)
+```
+
+## Confidence interval for individual regression coefficients
+- If we want a confidence interval for $\beta_{1}$. We can write $\va$ as follows
+$$
+\va_{\tt lcavol} = \left(0,1,0,0,0,0,0,0\right)^{T}
+$$
+
+so that
+$$
+\va_{\tt lcavol}^{T}\vbeta = \vbeta_1
+$$ 
+and 
+$$
+\va_{\tt lcavol}^{T}\widehat{\beta} = \widehat{\beta}_1 = {\tt coef(prostate.lm)[2]}
+$$
+
+## Confidence interval for regression coefficient
+
+-   Suppose we want a $(1-\alpha)\cdot 100\%$ CI for
+    $\beta_{1}$.
+-   Just as in simple linear regression:
+$$\begin{aligned}\va^{T}_{\tt lcavol}\widehat{\vbeta} \pm t_{1-\alpha/2, n-p-1} \cdot SE\left(\va^{T}_{\tt lcavol}\widehat{\vbeta}\right)\\
+\widehat{\beta}_{1} \pm t_{1-\alpha/2, n-p-1} \cdot SE\left(\widehat{\beta}_{1}\right).\end{aligned}$$
+
+
+## Example (confidence interval for regression coefficient)
+
+```{r}
+confint(prostate.lm, level=0.90)
+```
+
+- Confidence interval for $\beta_{1}$:
+
+```{r}
+confint(prostate.lm, c("lcavol"), level=0.90)
+```
+
+
+## Bonferroni correction (confidence interval for regression coefficient)
+- Bonferroni correction is a multiple-comparison correction used when several dependent or independent statistical tests are being performed simultaneously
+```{r}
+confint(prostate.lm, c("lcavol", 
+  "lweight", "age", "lbph", "svi", 
+  "lcp", "pgg45"), 
+  level= 1-.1/7)
+```
+
+## $T$-statistics revisited
+
+- Of course, these confidence intervals are based on the standard ingredients of a $T$-statistic.
+
+-   Suppose we want to test $$H_0:\sum_{j=0}^p a_j\beta_j= h.$$ - As in simple linear regression, it is based on $$T = \frac{\sum_{j=0}^p a_j \widehat{\beta}_j - h}{SE(\sum_{j=0}^p a_j \widehat{\beta\
+}_j)}.$$
+
+-   If $H_0$ is true, then $T \sim t_{n-p-1}$, so we reject $H_0$ at level $\alpha$ if $$\begin{aligned}
+       |T| &\geq t_{1-\alpha/2,n-p-1}, \qquad \text{ OR} \\
+       \text{p-value} &= {\tt 2*(1-pt(|T|, n-p-1))} \leq \alpha.
+       \end{aligned}$$
+
+## Example (T-statistic)
+- `R` produces these in the `coef` table `summary` of the linear regression model. Again, each of these linear combinations is a vector $\va$ with only one non-zero entry like $\va_{\tt lcavol}$ above.
+
+```{r results='asis'}
+print(xtable(summary(prostate.lm)$coef, 
+  digits = 3), scalebox='0.6')
+```
+
+## Example (T-statistic)
+- Let's do a quick calculation to remind ourselves the relationships of the columns in the table above.
+
+
+```{r}
+T1 = 0.570 / 0.086
+P1 = 2 * (1 - pt(abs(T1), 89))
+print(round(c(T1, P1), digits = 3))
+```
+
+- These were indeed the values for `lcavol` in the `summary` table.
+
+## One-sided tests
+
+- Suppose, instead, we wanted to test the one-sided hypothesis
+    $$H_0:\sum_{j=0}^p a_j\beta_j \leq  h, \  \text{vs.} \ H_a: \sum_{j=0}^p a_j\beta_j > h$$
+
+- We reject $H_0$ at level $\alpha$ if $$\begin{aligned} T &\geq t_{1-\alpha,n-p-1}, \qquad \text{ OR} \\
+   p-\text{value} &= {\tt (1-pt(T, n-p-1))} \leq \alpha.
+   \end{aligned}$$
+       
+- **Note: the decision to do a one-sided $T$ test should be made *before* looking at the $T$ statistic. Otherwise, the probability of a type I error is doubled!**
+
+## Prediction interval
+
+- Basically identical to simple linear regression.
+
+- Prediction interval at $X_{1,new}, \dots, X_{p,new}$:
+$$\begin{aligned}
+\widehat{\beta}_0 + \sum_{j=1}^p X_{j,new} \widehat{\beta}_j\pm t_{1-\alpha/2, n-p-1}  \sqrt{\widehat{\sigma}^2 + SE\left(\widehat{\beta}_0 + \sum_{j=1}^p X_{j,new}\widehat{\beta}_j\right)^2}.
+       \end{aligned}$$
+- If we take $\va = \left(1, X_{1,new}, \cdots, X_{p,new} \right)^{T},$
+- $\left(1-\alpha\right)100\%$ prediction interval for the response is 
+$$\begin{aligned}
+\va^{T}\hat{\vbeta}\pm t_{1-\alpha/2, n-p-1}  \sqrt{\widehat{\sigma}^2 + \va^{T}\text{Cov}\left(\hat{\vbeta}\right)\va}.
+       \end{aligned}$$
+
+## Forming intervals by hand
+
+- While `R` computes most of the intervals we need, we could write a function that explicitly computes a confidence interval (and can be used for prediction intervals 
+with the "extra" argument).
+
+- This exercise shows the calculations that R is doing under the hood: the function *predict* is generally going to be fine for our purposes.
+
+## 
+```{r}
+interaval.lm = function(cur.lm, a, level=0.95, extra=0) {
+     # the center of the confidence interval
+     center = sum(a*cur.lm$coef)
+     # the estimate of sigma^2
+     sigma.hat.sq = sum(resid(cur.lm)^2) / 
+       cur.lm$df.resid
+     # the standard error of sum(a*cur.lm$coef)
+     se = sqrt(extra * sigma.hat.sq + 
+         sum((a %*% vcov(cur.lm)) * a))
+     # the degrees of freedom for the t-statistic
+     df = cur.lm$df
+     # the quantile used in the confidence interval
+     q = qt((1 - level)/2, df, 
+       lower.tail=FALSE)
+     # upper, lower limits
+     upper = center + se * q
+     lower = center - se * q
+     return(data.frame(center, 
+       lower, upper))
+}
+```
+
+
+## Example (prediction intervals)
+
+- By using the $\text{extra} = 1$ argument, we can make prediction intervals.
+
+```{r}
+print(interaval.lm(prostate.lm, c(1, 1.3, 3.6, 
+  64, 0.1, 0.2, -0.2, 25), 
+  extra=1))
+predict(prostate.lm,list(lcavol=1.3,
+  lweight = 3.6,age = 64,lbph = 0.1,
+  svi = 0.2,lcp = -0.2, pgg45 = 25), 
+  interval='prediction')
+```
+
+## Example (confidence interval for mean response)
+```{r}
+print(interaval.lm(prostate.lm, 
+  c(1, 1.3, 3.6, 64, 0.1, 
+    0.2, -0.2, 25), extra = 0))
+predict(prostate.lm, list(lcavol = 1.3, 
+  lweight = 3.6,
+  age = 64, lbph = 0.1,svi = 0.2,
+  lcp = -0.2, pgg45 = 25), 
+  interval='confidence')
+```
+
+## Arbitrary contrasts
+
+- If we want, we can set the intercept term to 0. This allows us to construct confidence interval for, say, how much the `lpsa` score will change will increase if we change `age` by 2 years and `svi` by 0.5 units, leaving everything else unchanged. 
+
+- Therefore, what we want is a confidence interval for 2 times the coefficient of `age` + 0.5 times the coefficient of `lbph`:
+$$
+2 \cdot \beta_{\tt age} + 0.5  \cdot \beta_{\tt svi}
+$$
+
+- Most of the time, *predict* will do what you want so this 
+won't be used too often.
+
+## Example (Arbitrary contrasts)
+```{r}
+print(interaval.lm(prostate.lm, 
+  c(0,0,0,2,0,0.5,0,0),  extra = 0))
+```
+
+## References
+- **CH** Chapter 3.9, 3.11.
+- Lecture notes of  [\blc Jonathan Taylor \bc](http://statweb.stanford.edu/~jtaylo/).

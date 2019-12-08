@@ -1,0 +1,6 @@
+base
+ggplot2
+gridExtra
+GGally
+dplyr
+magrittr

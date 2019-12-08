@@ -1,0 +1,14 @@
+base
+ggplot2
+magrittr
+dplyr
+leaps
+boot
+Matrix
+glmnet
+intervals
+survival
+coda
+adaptMCMC
+MASS
+selectiveInference

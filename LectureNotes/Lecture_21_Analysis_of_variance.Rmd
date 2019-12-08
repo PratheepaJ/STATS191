@@ -1,0 +1,675 @@
+---
+title: "Lecture 21: Analysis of Variance"
+shorttitle: "STATS 191 Lecture 21"
+author: "Pratheepa Jeganathan"
+date: "11/08/2019"
+output: 
+  beamer_presentation:
+    colortheme: "seahorse"
+    slide_level: 2
+    includes:
+      in_header: header.tex
+bibliography: AppliedStat.bib
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 7, fig.height = 4, message=FALSE, warning=FALSE, cache = TRUE)
+set.seed(0)
+library(ggplot2)
+library(magrittr)
+library(dplyr)
+```
+
+
+## Recap
+
+- What is a regression model?
+- Descriptive statistics -- graphical
+- Descriptive statistics -- numerical
+- Inference about a population mean
+- Difference between two population means
+- Some tips on R
+- Simple linear regression (covariance, correlation, estimation, geometry of least squares)
+    - Inference on simple linear regression model
+    - Goodness of fit of regression: analysis of variance.
+    - $F$-statistics.
+    - Residuals.
+    - Diagnostic plots for simple linear regression (graphical methods).
+
+## Recap
+- Multiple linear regression
+    - Specifying the model.
+    - Fitting the model: least squares.
+    - Interpretation of the coefficients.
+    - Matrix formulation of multiple linear regression
+    - Inference for multiple linear regression
+        - $T$-statistics revisited.
+        - More $F$ statistics.
+        - Tests involving more than one $\beta$.   
+- Diagnostics – more on graphical methods and numerical methods
+    - Different types of residuals
+    - Influence
+    - Outlier detection
+    - Multiple comparison (Bonferroni correction)
+    - Residual plots:
+        - partial regression (added variable) plot,
+        - partial residual (residual plus component) plot.
+
+## Recap
+- Adding qualitative predictors 
+    - Qualitative variables as predictors to the regression model.
+    - Adding interactions to the linear regression model. 
+    - Testing for equality of regression relationship in various subsets of a population
+
+
+#  ANOVA
+
+## Outline
+- One-way layout
+- Two-way layout
+
+## ANOVA models
+- Often, especially in experimental settings, we record *only* categorical variables. 
+
+- Such models are often referred to *ANOVA (Analysis of Variance)* models.
+
+- These are generalizations of the two sample $t$-test.
+
+## Example: recovery time
+
+- Suppose we want to understand the relationship between
+recovery time after surgery based on an patient's prior fitness.
+
+- We group patients into three fitness levels: below average, average, above average.
+
+- If a patient is in better shape before surgery, does it take less time to recover?
+
+## Example: recovery time
+
+```{r}
+url = 'http://stats191.stanford.edu/data/rehab.csv'
+rehab.table = read.table(url, header=T, sep=',')
+rehab.table$Fitness <- factor(rehab.table$Fitness) 
+head(rehab.table)
+```
+
+## Example: recovery time
+```{r}
+p = ggplot(data = rehab.table) + 
+  geom_boxplot(aes(x = Fitness, 
+    y = Time, fill = Fitness)) +
+  scale_fill_manual(values = 
+      c('red','green','blue'))
+```
+
+## Example: recovery time
+```{r echo=FALSE}
+p
+```
+
+- Boxplot shows that the reovery time for the `above average` fitness group is less than the `average` and `below average` group.
+
+
+## One-way ANOVA
+
+- First generalization of two sample $t$-test: more than two groups.
+- Observations are broken up into $r$ groups with $n_i, 1 \leq i \leq r$ observations per group. 
+- Model: $$Y_{ij} = \mu  + \alpha_i + \varepsilon_{ij}, \qquad \varepsilon_{ij} \overset{IID}{\sim} N(0, \sigma^2),$$
+- $Y_{ij}$ is the $j$-th measurement in $i$-th group, $\mu$ is the overall mean $\mu = \dfrac{1}{r}\sum_{i=1}^{r}\mu_{i}$, $\alpha_{i}$ is the main effect of group $i$ on $Y$ (That is, $\alpha_{i} = \mu_{i} - \mu$).
+- Constraint: $\sum_{i=1}^r \alpha_i = 0$. 
+    - This constraint is needed for “identifiability”. 
+    - This is “equivalent” to only adding $r-1$ columns to the design matrix for this qualitative variable.
+ 
+
+## Fitting the model (One-way ANOVA)
+
+- Model is easy to fit:
+    $$\widehat{Y}_{ij} = \frac{1}{n_i} \sum_{j=1}^{n_i} Y_{ij} = \overline{Y}_{i\cdot}$$
+  - If observation is in $i$-th group: predicted mean is just the sample mean of observations in $i$-th group.
+
+
+## Testing (One-way ANOVA)
+- Simplest question: is there any group (main) effect? $$H_0:\alpha_1 = \dots = \alpha_r= 0$$
+
+or $$H_0:\mu_1 = \dots = \mu_r.$$
+
+- Test is based on $F$-test with full model vs. reduced model.
+    - Reduced model just has an intercept $Y_{ij} = \mu  + \varepsilon_{ij}$.
+
+- Other questions: is the effect the same in groups 1 and 2? $$H_0:\alpha_1=\alpha_2?$$
+
+## Fitting the model (One-way ANOVA)
+- `lm()` uses indicator variables.
+
+```{r}
+rehab.lm = lm(Time ~ Fitness, data = rehab.table)
+##summary(rehab.lm)
+```
+- `lm()` considers the `Fitness == 1` as the base level.
+
+
+```{r echo=FALSE,out.width = "200px"}
+knitr::include_graphics("Lecture_21_rehab_anova.png")
+```
+
+## Fitting the model (One-way ANOVA)
+<!-- - There are ways to get *different* design matrices by using the -->
+<!-- `contrasts` argument. This is a bit above our pay grade at the moment. -->
+
+- Upon inspection of the design matrix above, we see that
+the `(Intercept)` coefficient corresponds to the mean in `Fitness==1`, while
+`Fitness==2` coefficient corresponds to the difference between the groups `Fitness==2` and `Fitness==1`.
+
+
+## Fitting the model (One-way ANOVA)
+
+$$Y_{ij} = \mu  + \alpha_i + \varepsilon_{ij}.$$ 
+
+- This is not the same *parameterization* we get when only adding $r-1$ of 0-1 columns, but it gives the same *model*.
+    - $\hat{Y}_{ij} = \bar{Y}_{i.}$
+
+- The estimates of $\alpha$'s can be obtained from the estimates
+of $\beta$ using `R`'s default parameters.
+
+- For a more detailed exploration into `R`'s creation of design matrices, try reading the following [\blc tutorial on design matrices\bc](http://nbviewer.ipython.org/github/fperez/nipy-notebooks/blob/master/exploring_r_formula.ipynb).
+
+## Fitting the model (One-way ANOVA)
+
+- The design matrix is the indicator coding
+```{r}
+head(model.matrix(rehab.lm))
+```
+- Recall that the rows of the `Coefficients` table above do not
+correspond to the $\alpha$ parameter. 
+    - `R` does use the $r-1$ indicator variables. 
+    - `R` does not use the condition that $\alpha$'s and their sum would have to be equal to 0.
+
+## Fitting the model (One-way ANOVA)
+- $\bar{Y}_{1\cdot}, \bar{Y}_{2\cdot}, \bar{Y}_{3\cdot}$ are as follows:
+```{r}
+print(predict(rehab.lm, 
+  list(Fitness=factor(c(1,2,3)))))
+c(mean(rehab.table$Time[rehab.table$Fitness == 1]), 
+  mean(rehab.table$Time[rehab.table$Fitness == 2]), 
+  mean(rehab.table$Time[rehab.table$Fitness == 3]))
+```
+
+
+## Fitting the model (One-way ANOVA)  
+```{r}
+overall_mean = mean(rehab.table$Time);overall_mean
+group_by(rehab.table, Fitness) %>%
+  summarise(
+    n_i = n(),
+    hat_mean_i = mean(Time, na.rm = TRUE),
+    hat_alpha_i = hat_mean_i - overall_mean,
+    hat_sd_i = sd(Time, na.rm = TRUE)
+  )
+```
+
+## ANOVA table
+
+\tiny
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+Source &	SS &	df	& MS & $\E \left(\text{MS}\right)$\\
+\hline 
+Treatment & $\text{SSTR}=\sum_{i=1}^r n_i \left(\overline{Y}_{i\cdot} - \overline{Y}_{\cdot\cdot}\right)^2$ & $r-1$ & $\text{MSTR} = \dfrac{\text{SSTR}}{r-1}$ & $\begin{aligned} \sigma^{2} & +\\ \frac{\sum_{i=1}^r n_i \alpha_i^2}{r-1}& \end{aligned}$\\
+Error & $\text{SSE}=\sum_{i=1}^r \sum_{j=1}^{n_i}(Y_{ij} - \overline{Y}_{i\cdot})^2$ & $\sum_{i=1}^r (n_i - 1)$ & $\text{MSE} = \dfrac{\text{SSE}}{\sum_{i=1}^r (n_i - 1)}$ & $\sigma^2$\\
+\hline
+\end{tabular}
+
+\normalsize
+- Much of the information in an ANOVA model is contained in the  ANOVA table.
+- SSTR: sum of squares of treatment and SSE: Sum of squares of error.
+- Note that $MSTR$ measures “variability” of the “cell” means.
+    - If there is a group effect we expect this to be large relative to $MSE$.
+- We see that under $H_0:\alpha_1=\dots=\alpha_r=0$, the expected value of $MSTR$ and $MSE$ is $\sigma^2$. 
+    - This tells us how to test $H_0$ using ratio of mean squares, i.e. an $F$ test.
+
+## Testing for any main effect
+
+- Rows in the ANOVA table are, in general, independent.
+
+- Therefore, under $H_0$ $$F = \frac{MSTR}{MSE} = \frac{\frac{SSTR}{df_{TR}}}{\frac{SSE}{df_{E}}} \sim F_{df_{TR}, df_E}$$ the degrees of freedom come from the $df$ column in previous table.
+
+- Reject $H_0$ at level $\alpha$ if $F \geq F_{1-\alpha, df_{TR}, df_{E}}.$
+
+## ANOVA table
+```{r}
+anova(rehab.lm)
+```
+
+
+## Testing for any main effect
+- Relationship between the columns in the above ANOVA table.
+```{r}
+F = 336.00 / 19.81
+pval = 1 - pf(F, 2, 21)
+print(data.frame(F,pval))
+```
+
+## ANOVA in R (using aov())
+```{r}
+rehab.aov = aov(Time ~ Fitness, 
+  data = rehab.table) 
+summary(rehab.aov)
+```
+- We can conclude at 5\% significance level that at least one of the effects is non zero (or at least one of means $\mu_{i}$ is different from other) 
+
+## Inference for linear combinations
+
+- Suppose we want to ``infer'' something about
+   $$\sum_{i=1}^r a_i \mu_i,$$
+where $\mu_i = \mu+\alpha_i$ is the mean in the $i$-th group.
+    - For example: 
+    $$H_0:\mu_1-\mu_2=0 \qquad \text{(same as $H_0:\alpha_1-\alpha_2=0$)}?$$       
+    - For example: Is there a difference between below average and average groups in terms of rehab time?   
+    
+## Inference for linear combinations
+
+- We need to know $$\text{Var}\left(\sum_{i=1}^r a_i \overline{Y}_{i\cdot} \right) = \sigma^2 
+   \sum_{i=1}^r \frac{a_i^2}{n_i}.$$
+   
+- After this, the usual confidence intervals and $t$-tests apply.
+
+## Example
+- Pairwise t-test
+- $\text{H}_{0}: \mu_{i} = \mu_{k}$ versus $\text{H}_{a}: \mu_{i} \neq \mu_{k}$ where $i \neq k = 1,2,3.$
+```{r}
+pairwise.t.test(rehab.table$Time, 
+  rehab.table$Fitness, 
+  p.adjust.method = "bonferroni")
+```
+
+
+## Example
+- Tukey's multiple pairwise-comparisons
+- More about [\blc Tukey's multiple pairwise-comparisons\bc](https://newonlinecourses.science.psu.edu/stat503/node/15/)
+```{r}
+TukeyHSD(rehab.aov)
+```
+ 
+## Diagnostics
+```{r}
+plot(rehab.aov, 1)
+```
+
+## Diagnostics
+- Variance is same in each group
+- OK!
+```{r}
+plot(rehab.aov, 1)
+```
+
+## Diagnostics
+- Normality assumption
+```{r}
+plot(rehab.aov, 2)
+```
+
+## Diagnostics
+- Normality assumption
+- Looks OK!
+```{r}
+plot(rehab.aov, 2)
+```
+
+## Two-way ANOVA
+
+- Often, we will have more than one variable we are changing.
+
+
+## Example
+
+- After kidney failure, we suppose that the time of stay in hospital depends on weight gain between treatments and duration of treatment. 
+
+- We will model the `log` number of days as a function of the other two factors.
+
+\small
+\begin{tabular}{|l|l|}
+\hline
+Variable&	Description \\
+\hline
+Days &	Duration of hospital stay (resposne)\\
+Weight &	How much weight is gained? (three levels)\\
+Duration &	How long under treatment for kidney problems? (two levels)\\
+\hline
+\end{tabular}
+
+## Example (Two-way ANOVA model)
+```{r}
+url = 'http://statweb.stanford.edu/~jtaylo/stats191/data/kidney.table'
+kidney.table = read.table(url, header=T)
+kidney.table$D = factor(kidney.table$Duration)
+kidney.table$W = factor(kidney.table$Weight)
+kidney.table$logDays = log(kidney.table$Days + 1) 
+head(kidney.table)
+```
+
+
+
+## Two-way ANOVA model
+
+- Second generalization of $t$-test: more than one grouping variable.
+
+- Two-way ANOVA model: 
+    - $r$ groups in first factor
+    - $m$ groups in second factor
+    - $n_{ij}$ in each combination of factor variables.
+
+- Model: $$Y_{ijk} = \mu + \alpha_i + \beta_j + (\alpha \beta)_{ij} +         
+    \varepsilon_{ijk} , \qquad \varepsilon_{ijk} \sim N(0, \sigma^2).$$
+
+- In kidney example, $r=3$ (weight gain), $m=2$ (duration of
+    treatment), $n_{ij}=10$ for all $(i,j)$.
+
+## Questions of interest
+
+Two-way ANOVA: main questions of interest
+
+- Are there main effects for the grouping variables?
+    $$H_0:\alpha_1 = \dots = \alpha_r = 0, \qquad H_0: \beta_1 = \dots = \beta_m = 0.$$
+
+- Are there interaction effects:
+    $$H_0:(\alpha\beta)_{ij} = 0, 1 \leq i \leq r, 1 \leq j \leq m.$$
+
+## Interactions between factors
+
+We've already seen these interactions in the IT salary example. 
+
+- An *additive model* says that the effects of the two factors
+occur additively -- such a model has no interactions.
+
+- An *interaction* is present whenever the additive model does not hold.
+
+## Interaction plot
+```{r}
+interaction.plot(kidney.table$W, kidney.table$D, 
+  kidney.table$logDays, type='b', 
+  col=c('red', 'blue'), lwd=2, 
+  pch=c(23,24), 
+  xlab = "Weight", 
+  ylab = "mean of logDays")
+```
+
+## Interaction plot
+
+- When these broken lines are not parallel, there is evidence of an interaction.
+- The one thing missing from this plot are errorbars. 
+    - The above broken lines are clearly not parallel but there is measurement error. 
+    - If the error bars were large then we might consider there to be no interaction, otherwise we might.
+
+## Parameterization
+
+- Many constraints are needed, again for identifiability. Let’s not worry too much about the details.
+- Constraints:
+    - $\sum_{i=1}^r \alpha_i = 0$
+    - $\sum_{j=1}^m \beta_j = 0$
+    - $\sum_{j=1}^m (\alpha\beta)_{ij} = 0, 1 \leq i \leq r$
+    - $\sum_{i=1}^r (\alpha\beta)_{ij} = 0, 1 \leq j \leq m.$
+- We should convince ourselves that we know have exactly $r*m$ free parameters.
+
+## Fitting the model
+
+- Easy to fit when $n_{ij}=n$ (balanced)
+    $$\widehat{Y}_{ijk}= \overline{Y}_{ij\cdot} = \frac{1}{n}\sum_{k=1}^{n} Y_{ijk}.$$
+
+- Inference for linear combinations of $\mu_{ij}$'s
+    $$\text{Var} \left(\sum_{i=1}^r \sum_{j=1}^m a_{ij} \overline{Y}_{ij\cdot}\right) = \frac{ \sigma^2}{n} \cdot \sum_{i=1}^r \sum_{j=1}^m{a_{ij}^2}.$$
+
+- Usual $t$-tests, confidence intervals.
+
+
+## Fitting the model
+```{r}
+group_by(kidney.table, W, D) %>%
+  summarise(
+    count = n(),
+    hat_mean_ij = mean(logDays, na.rm = TRUE),
+    hat_sd_ij = sd(logDays, na.rm = TRUE)
+  )
+```
+
+## ANOVA table
+- In the balanced case, everything can again be summarized
+from the ANOVA table
+\tiny
+\begin{tabular}{|l|l|l|l|}
+\hline
+Source & SS & DF & MS \\
+\hline 
+A & $SSA=nm\sum_{i=1}^r  \left(\overline{Y}_{i\cdot\cdot} - \overline{Y}_{\cdot\cdot\cdot}\right)^2$ & r-1 & SSA/(r-1) \\
+B & $SSB=nr\sum_{j=1}^m  \left(\overline{Y}_{\cdot j\cdot} - \overline{Y}_{\cdot\cdot\cdot}\right)^2$ & m-1 & SSB/(m-1) \\
+A:B & $SSAB = n\sum_{i=1}^r \sum_{j=1}^m  \left(\overline{Y}_{ij\cdot} - \overline{Y}_{i\cdot\cdot} - \overline{Y}_{\cdot j\cdot} + \overline{Y}_{\cdot\cdot\cdot}\right)^2$ & (m-1)(r-1) & SSAB/(m-1)(r-1) \\
+ERROR & $SSE = \sum_{i=1}^r \sum_{j=1}^m \sum_{k=1}^{n}(Y_{ijk} - \overline{Y}_{ij\cdot})^2$ & (n-1)mr & SSE/(n-1)mr \\
+\hline
+\end{tabular}
+
+
+## ANOVA table
+
+\begin{tabular}{|l|l|}
+\hline
+Source &  $\mathbb{E}(MS)$\\
+\hline 
+A &  $\sigma^2 + nm\frac{\sum_{i=1}^r \alpha_i^2}{r-1}$\\
+B &  $\sigma^2 + nr\frac{\sum_{j=1}^m \beta_j^2}{m-1}$\\
+A:B & $\sigma^2 + n\frac{\sum_{i=1}^r\sum_{j=1}^m (\alpha\beta)_{ij}^2}{(r-1)(m-1)}$\\
+ERROR &  $\sigma^2$\\
+\hline
+\end{tabular}
+
+## Tests using the ANOVA table
+
+- Rows of the ANOVA table can be used to test various of the hypotheses we started out with.
+
+- For instance, we see that under $H_0:(\alpha\beta)_{ij}=0, \forall i,j$ the expected value of $SSAB$ and $SSE$ is $\sigma^2$: use these for an $F$-test testing for an interaction.
+  
+- Under $H_0,$ $$F = \frac{MSAB}{MSE} = \frac{\frac{SSAB}{(m-1)(r-1)}}{\frac{SSE}{(n-1)mr}} \sim F_{(m-1)(r-1), (n-1)mr}.$$
+
+## Tests using the ANOVA table
+```{r}
+kidney.aov = aov(logDays ~ D * W, 
+  data = kidney.table)
+summary(kidney.aov)
+```
+
+- $H_0:(\alpha\beta)_{ij}=0, \forall i,j$, we do not reject $H_0$ at 5\% significance level. 
+- The main effects are significant at 5\% significance level.
+
+<!-- ## -->
+<!-- ```{r eval=FALSE} -->
+<!-- model.tables(kidney.aov, type="means",  -->
+<!--   se = TRUE) -->
+<!-- ``` -->
+
+```{r echo=FALSE,out.width = "300px", include=FALSE}
+knitr::include_graphics("Lecture_21_kidney_example.png")
+```
+
+## Tests using the ANOVA table
+- Multiple pairwise comparison of effect of `Weight` groups
+```{r}
+pairwise.t.test(kidney.table$logDays, 
+  kidney.table$W, 
+  p.adjust.method = "bonferroni")
+```
+
+
+## Tests using the ANOVA table
+- Multiple pairwise comparison of effect of `Duration` groups
+```{r}
+pairwise.t.test(kidney.table$logDays, 
+  kidney.table$D, 
+  p.adjust.method = "bonferroni")
+```
+- We do not reject the $H_{0}$ (at 5\% significance level) that the level of duration (of treatment) has no different effect on the number of stays in the hospital.
+
+
+<!-- ## Tests using the ANOVA table -->
+<!-- - Let's use the less conservative method than Bonferroni method. -->
+
+<!-- ```{r} -->
+<!-- TukeyHSD(kidney.aov, which = "D") -->
+<!-- ``` -->
+
+## Diagnostics
+-  homogeneity of variance - OK!
+```{r}
+plot(kidney.aov, 1)
+```
+
+
+##
+
+- Normality assumption - OK!
+```{r}
+plot(kidney.aov, 2)
+```
+
+## Fit using lm
+$Y_{ijk} = \beta_{0}+\beta_{1}D_{1} + \beta_{2}W_{1} + \beta_{3}W_{2} + \beta_{4}D_{1}W_{1} + \beta_{5}D_{1}W_{2} +\epsilon$
+```{r}
+kidney.lm = lm(logDays ~ D*W, 
+  contrasts=list(D='contr.sum', 
+    W='contr.sum'), data = kidney.table)
+#summary(kidney.lm)
+```
+
+```{r echo=FALSE,out.width = "200px"}
+knitr::include_graphics("Lecture_21_kidney_ex_lm.png")
+```
+
+
+## Contrasts in R
+- One level is the base level
+- Compare other levels with the base level
+```{r}
+contr.sum(3)
+```
+
+```{r}
+contr.sum(2)
+```
+
+## Model matrix in lm
+- R uses indicator variables
+```{r}
+head(model.matrix(kidney.lm))
+```
+
+## Finding predicted values using lm
+- The most direct way to compute predicted values is using the `predict` function.
+    - For example, $\bar{Y}_{11.}$ and the confidence interval for $\mu_{11.}$ are
+
+```{r}
+predict(kidney.lm, list(D=factor(1), 
+  W=factor(1)), interval='confidence')
+```
+
+## ANOVA using lm
+```{r}
+anova(kidney.lm)
+```
+
+- We can tests the interaction and the overall main effects (same as using `aov`)
+
+## Some caveats
+- We can test the interaction using our usual approach.
+```{r}
+anova(lm(logDays ~ D+W, 
+  data = kidney.table),
+  lm(logDays ~ D*W, 
+    data = kidney.table))
+```
+- But we cannot test the main effects using this approach
+
+## Some caveats
+
+- Test the main effect of `Weight` factor variable using our ususal approach.
+```{r}
+anova(lm(logDays ~ D, 
+  data = kidney.table),
+  lm(logDays ~ D+W, 
+    data = kidney.table))
+```
+
+## Some caveats
+
+- This F statistics value is not same as when we use anova(kidney.lm)
+
+```{r echo=FALSE,out.width = "200px"}
+knitr::include_graphics("Lecture_21_kidney_ex_lm_caveat.png")
+```
+
+```{r echo=FALSE,out.width = "200px"}
+knitr::include_graphics("Lecture_21_kidney_ex_lm_anova.png")
+```
+
+## Sum of squares
+
+- Let's take $Y$ response and 3 predictors $X_{1}, X_{2}, X_{3}$.
+- $\text{SSR}\left(X_{1}, X_{2}, X_{3} \right)$: total variation explained by $X_{1}$, $X_{2}$, and $X_{3}$.
+- $\text{SSR}\left(X_{1}| X_{2} \right)$: additional variation explained by $X_{1}$ when added to a model already containing $X_{2}$.
+
+## Extra sum of squares
+
+- ESS measures the part of the SSE (sum of squares of error) that is explained by an added subset of predictors.
+    - $\text{SSR}\left(X_{1}| X_{2} \right) = \text{SSE}\left(X_{2}\right) - \text{SSE}\left(X_{1}, X_{2}\right)$
+    - Sequential sum of squares can be used to compute the total variation explained by $X_{1}$, $X_{2}$, and $X_{3}$. This computation of sum of squares is called the Type I sum of squares.
+    $$\text{SSR}\left(X_{1}, X_{2}, X_{3} \right)  = \text{SSR}\left(X_{1}\right) + \text{SSR}\left(X_{2}|X_{1}\right) +
+    \text{SSR}\left(X_{3}|X_{1}, X_{2}\right)$$
+    - Type I sum of squares can be used to test a term in the order they are listed in the model.
+    
+
+## ANOVA table
+- Need partial sum of squares $SSA = SS(A|B, AB)$, $SS(B|A, AB)$, $SSAB = SS(AB|A,B)$.
+- We can compute the above sum of squares using Type III sum of squares.
+- In the **balanced design** the ANOVA table is 
+from the ANOVA table
+\footnotesize
+\begin{tabular}{|l|l|l|}
+\hline
+Source & SS & DF  \\
+\hline 
+A & $SSA = SS(A|B, AB)=nm\sum_{i=1}^r  \left(\overline{Y}_{i\cdot\cdot} - \overline{Y}_{\cdot\cdot\cdot}\right)^2$ & r-1  \\
+B & $SSB = SS(B|A, AB)=nr\sum_{j=1}^m  \left(\overline{Y}_{\cdot j\cdot} - \overline{Y}_{\cdot\cdot\cdot}\right)^2$  \\
+A:B & $SSAB = SS(AB|A,B) = n\sum_{i=1}^r \sum_{j=1}^m  \left(\overline{Y}_{ij\cdot} - \overline{Y}_{i\cdot\cdot} - \overline{Y}_{\cdot j\cdot} + \overline{Y}_{\cdot\cdot\cdot}\right)^2$ & (m-1)(r-1)  \\
+ERROR & $SSE = \sum_{i=1}^r \sum_{j=1}^m \sum_{k=1}^{n}(Y_{ijk} - \overline{Y}_{ij\cdot})^2$ & (n-1)mr  \\
+\hline
+\end{tabular}
+
+
+
+## Type I, II, III sum of squares
+- Type I, II, III sum of squares will give different results (ANOVA table) for **unbalanced design**.
+- `anova()` and `aov()` computes the sequential sum of squares
+    - factors are tested in the order they are in the model.
+- For the two-way layout, we want to test each term in the model in light of the every other term in the model.
+- If the design is unbalanced, we can use `Anova()` (with contrasts sum) in `car` package to get the ANOVA table.
+
+
+## For the example
+```{r}
+library(car)
+Anova(lm(logDays ~ D * W, data = kidney.table,
+         contrasts=list(D='contr.sum', W='contr.sum')), 
+      type = "III")
+
+```
+
+
+
+
+## Recommended reading
+
+[\blc Design and Analysis of Experiments, 10th Edition\bc](https://www.wiley.com/en-us/Design+and+Analysis+of+Experiments%2C+10th+Edition-p-9781119492443), Douglas C. Montgomery: PDF is available for an older edition.
+
+
+## Reference
+
+<!-- - [@lawson2014] -->
+<!-- - [@wakefield2013]:  -->
+- Lecture notes of  [\blc Jonathan Taylor \bc](http://statweb.stanford.edu/~jtaylo/).

@@ -1,0 +1,501 @@
+---
+title: "Lecture 7: Simple linear regression II"
+shorttitle: "STATS 191 Lecture 7"
+author: "Pratheepa Jeganathan"
+date: "10/07/2019"
+output: 
+  beamer_presentation:
+    colortheme: "seahorse"
+    slide_level: 2
+    includes:
+      in_header: header.tex
+bibliography: AppliedStat.bib
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 5, fig.height = 3, message=FALSE, warning=FALSE, cache = TRUE)
+set.seed(0)
+library(ggplot2)
+```
+
+
+## Recall
+
+- What is a regression model?
+
+- Descriptive statistics -- graphical
+
+- Descriptive statistics -- numerical
+
+- Inference about a population mean
+
+- Difference between two population means
+
+- Some tips on R
+
+- Simple linear regression (covariance, correlation, estimation, geometry of least squares)
+
+## Outline
+- Inference on simple linear regression model
+- Example
+
+## What do we mean by inference?
+
+- Generally, by inference, we mean "learning something about the relationship between $X$ and $Y$ based on the sample $(X_1, \dots, X_n)$ and $(Y_1, \dots, Y_n)$."
+
+- In the simple linear regression model, this often means learning about $\beta_0, \beta_1$.
+    - Particular forms of inference are **confidence intervals** or **hypothesis tests**. 
+
+- Most of the questions of *inference* in this course
+   can be answered in terms of $t$-statistics or $F$-statistics.
+
+- First we will talk about $t$-statistics, later $F$-statistics.
+
+## Examples of (statistical) hypotheses
+
+- [One sample problem:](http://en.wikipedia.org/wiki/Student%27s_t-test#One-sample_t-test) given an independent sample $\pmb{X}=(X_1, \dots, X_n)$ where $X_i\sim N(\mu,\sigma^2)$, the *null hypothesis $H_0:\mu=\mu_0$*  says that in fact the population mean is some specified value $\mu_0$.
+
+- [Two sample problem:](http://en.wikipedia.org/wiki/Student%27s_t-test#Independent_two-sample_t-test) given two independent samples $\pmb{Z}=(Z_1, \dots, Z_n)$, $\pmb{W}=(W_1, \dots, W_m)$  where $Z_i\sim N(\mu_1,\sigma^2)$ and $W_i \sim N(\mu_2, \sigma^2)$, the *null hypothesis $H_0:\mu_1=\mu_2$* says that in fact the population means from which the two samples are drawn are identical.
+
+## Testing a hypothesis
+
+- We test a null hypothesis, $H_0$ based on some test statistic $T$ whose distribution is fully known when $H_0$ is true.
+
+- For example, in the one-sample problem, if $\bar{X}$ is the sample mean of our sample $(X_1, \dots, X_n)$ and
+$$
+S^2 = \frac{1}{n-1} \sum_{i=1}^n (X_i-\bar{X})^2
+$$
+is the sample variance. Then
+$$
+T = \frac{\bar{X}-\mu_0}{S/\sqrt{n}}
+$$
+has what is called a [Student's t](http://en.wikipedia.org/wiki/Student's_t-distribution) distribution with $n-1$ degrees of freedom *when $H_0:\mu=\mu_0$ is true.* 
+
+- **When the null hypothesis is not true, it does not have this distribution!**
+
+## General form of a (Student's) $T$ statistic
+
+- A $t$ statistic with $k$ degrees of freedom, has a form that becomes easy to recognize after seeing it several times. 
+
+- It has two main parts: a numerator and a denominator. The numerator $Z \sim N(0,1)$ while $D \sim \sqrt{\chi^2_k/k}$ that is assumed *independent* of $Z$.
+
+- The $t$-statistic has the form
+$$
+T = \frac{Z}{D}.
+$$
+
+## One sample problem revisited
+
+- Above, we used the one sample problem as an example of a $t$-statistic. Let's be a little more specific.
+
+- Given an independent sample $\vX=(X_1, \dots, X_n)$ where $X_i\sim N(\mu,\sigma^2)$ we can test $H_0:\mu=0$ using a $T$-statistic.
+
+- We can prove that the random variables
+   $$\overline{X} \sim N(\mu, \sigma^2/n), \qquad \frac{S^2_X}{\sigma^2} \sim \frac{\chi^2_{n-1}}{n-1}$$
+   are independent.
+
+- Therefore, whatever the true $\mu$ is
+   $$\frac{\overline{X} - \mu}{S_X / \sqrt{n}} = \frac{ (\overline{X}-\mu) / (\sigma/\sqrt{n})}{S_X / \sigma} \sim t_{n-1}.$$
+  
+- Our null hypothesis specifies a particular value for $\mu$, i.e. 0. Therefore, under $H_0:\mu=0$ (i.e. assuming that $H_0$ is true), $$\overline{X}/(S_X/\sqrt{n}) \sim t_{n-1}.$$
+
+
+## 
+
+- Another form of the $t$-statistic is
+$$
+T = \frac{\text{estimate of parameter} - \text{true parameter}}{\text{accuracy of the estimate}}.
+$$
+
+- In more formal terms, we write this as
+$$
+T = \frac{\hat{\theta} - \theta}{SE(\hat{\theta})}.
+$$
+
+- Note that the denominator is the accuracy of the *estimate* and not the "accuracy" of the true parameter (which is usually assumed fixed, though not for Bayesians).
+
+- The term $SE$ or *standard error* will, in this course, usually refer to an estimate of the accuracy of estimator. Therefore, it is the square root of an estimate of the variance of an estimator. 
+
+## 
+
+- In our simple linear regression model, a natural (**unobservable**) $t$-statistic is
+$$
+T = \frac{\hat{\beta}_1 - \beta_1}{SE(\hat{\beta}_1)}.
+$$
+
+- We've seen how to compute $\hat{\beta}_1$, we never get to see the true $\beta_1$, so the only quantity we have anything left to say about is the standard error $SE(\hat{\beta}_1)$. 
+
+- How many degrees of freedom would this $T$ have?
+
+
+## Comparison of Student's $t$ to normal distribution
+
+- As the degrees of freedom increases, the population histogram, or density, of the $T_k$ distribution looks more and more
+like the standard normal distribution usually denoted by $N(0,1)$.
+
+```{r}
+rejection_region = function(dens, q_lower, 
+  q_upper, xval) {
+    fig = ggplot(data.frame(x = xval), 
+      aes(x)) +
+      stat_function(fun = dens, 
+        geom = 'line') +
+      stat_function(fun = function(x) {
+        ifelse(x > q_upper | x < q_lower, 
+          dens(x), NA)
+        }, geom='area', fill='#CC7777') +
+      labs(y='Density', x='T') +
+      theme_bw()
+}
+
+```
+
+
+##
+```{r}
+xval = seq(-4, 4, length=101)
+q = qnorm(0.975);q
+Z_fig = rejection_region(dnorm, 
+  -q, q, xval) + 
+  annotate('text', x = 2.5, 
+    y = dnorm(2)+0.3, 
+    label = 'Z statistic',
+    color = '#CC7777')
+```
+
+##
+- This change in the density has an effect on the *rejection rule* for hypothesis tests based on the $T_k$ distribution.
+
+- For instance, for the standard normal, the 5% rejection rule is to reject if the so-called $Z$-score is larger than about 2 in absolute value.
+
+##
+```{r}
+Z_fig
+```
+
+##
+
+- For the $T_{10}$ distribution, however, this rule must be modified.
+
+```{r}
+q10 = qt(0.975, 10); q10
+```
+
+##
+```{r}
+T_fig = Z_fig + 
+  stat_function(fun=function(x) {
+    ifelse(x > q10 | x < -q10, 
+      dt(x, 10), NA)
+    },
+    geom='area', 
+    fill='#7777CC', alpha=0.5) +
+  stat_function(fun=function(x) {
+    dt(x, 10)
+    }, 
+    color='blue') + 
+  annotate('text', x=2.5, 
+    y=dnorm(2)+0.27, 
+    label='T statistic, df=10',
+    color='#7777CC')
+```
+
+##
+```{r}
+T_fig
+```
+
+
+## Confidence interval
+
+- The following are examples of confidence intervals we saw in our review.
+    - One sample problem: instead of deciding whether $\mu=0$, we might want to come up with an (random) interval $\left[L,U\right]$ based on the sample $\vX$ such that the probability the true (nonrandom) $\mu$ is contained in $\left[L,U\right]$ is at least $1-\alpha$, i.e. 95%.
+
+    - Two sample problem: find a (random) interval $\left[L,U\right]$ based on the samples $\vZ$ and $\vW$ such that the probability the true (nonrandom) $\mu_1-\mu_2$ is contained in $\left[L,U\right]$ is at least $1-\alpha$, i.e. 95%.
+ 
+ 
+## Confidence interval for one sample problem
+
+- In the one sample problem, we might be interested in a confidence interval for the unknown $\mu$.
+
+- Given an independent sample $(X_1, \dots, X_n)$ where $X_i\sim N(\mu,\sigma^2)$ we can construct a $(1-\alpha)*100\%$ confidence interval using the numerator and denominator of the $t$-statistic.
+
+## Confidence interval for one sample problem
+
+- Let $q=t_{n-1,(1-\alpha/2)}$
+$$\begin{aligned}
+   1 - \alpha & \leq P_{\mu}\left(-q \leq \frac{\mu - \overline{X}}
+   {S_X / \sqrt{n}} \leq q \right) \\
+   &\leq P_{\mu}\left(-q \cdot {S_X / \sqrt{n}} \leq {\mu - \overline{X}} 
+   \leq q  \cdot {S_X / \sqrt{n}} \right) \\
+   &\leq P_{\mu}\left(\overline{X} - q  \cdot {S_X / \sqrt{n}} 
+   \leq {\mu} \leq \overline{X} + q  \cdot {S_X / \sqrt{n}} \right) \\
+   \end{aligned}$$
+   
+- Therefore, the interval $\overline{X} \pm q \cdot {S_X / \sqrt{n}}$ is a $(1-\alpha)*100\%$ confidence interval for $\mu$.
+
+
+## Inference for $\beta_0$ or $\beta_1$
+
+- Recall our model $$Y_i = \beta_0 + \beta_1 X_i + \varepsilon_i,$$
+where errors $\varepsilon_i$ are independent $N(0, \sigma^2)$.
+   
+- In our heights example, we might want to know if there really is a linear association between ${\tt Daughter}=Y$ and ${\tt Mother}=X$. 
+    - This can be answered with a *hypothesis test* of the null hypothesis $H_0:\beta_1=0$.
+    - This assumes the model above is correct, but that $\beta_1=0$.
+   
+- Alternatively, we might want to have a range of values that we can be fairly certain $\beta_1$ lies within.
+    - This is a *confidence interval* for $\beta_1$.
+
+## Setup for inference
+
+- We can show that
+$$\widehat{\beta}_1 \sim N\left(\beta_1, \frac{\sigma^2}{\sum_{i=1}^n(X_i-\overline{X})^2}\right).$$
+
+- Therefore, $$\frac{\widehat{\beta}_1 - \beta_1}{\sigma \sqrt{\frac{1}{\sum_{i=1}^n(X_i-\overline{X})^2}}} \sim N(\
+0,1).$$
+
+- The other quantity we need is the *standard error* or SE of $\hat{\beta}_1$. 
+    - This is obtained from estimating the variance of $\widehat{\beta}_1$, which, in this case means simply plugging in our estimate of $\sigma$, yielding
+$$SE(\widehat{\beta}_1) = \widehat{\sigma} \sqrt{\frac{1}{\sum_{i=1}^n(X_i-\overline{X})^2}} \qquad 
+   \text{independent of $\widehat{\beta}_1$}$$
+   
+## Testing $H_0:\beta_1=\beta_1^0$
+
+- Suppose we want to test that $\beta_1$ is some pre-specified
+ value, $\beta_1^0$ (this is often 0: i.e. is there a linear association)
+
+- Under $H_0:\beta_1=\beta_1^0$
+   $$T = \frac{\widehat{\beta}_1 - \beta^0_1}{\widehat{\sigma} \sqrt{\frac{1}{\sum_{i=1}^n(X_i-\overline{X})^2}}}
+   = \frac{\widehat{\beta}_1 - \beta^0_1}{ \frac{\widehat{\sigma}}{\sigma}\cdot \sigma \sqrt{\frac{1}{
+\sum_{i=1}^n(X_i-\overline{X})^2}}} \sim t_{n-2}.$$
+
+
+- Reject $H_0:\beta_1=\beta_1^0$ if $|T| \geq t_{n-2, 1-\alpha/2}$.
+
+# Example
+
+## Wage example
+
+```{r include=FALSE}
+url = 'http://www.stanford.edu/class/stats191/data/wage.csv'
+wages = read.table(url, sep=',', 
+  header=TRUE)
+print(head(wages))
+
+wages.lm = lm(logwage ~ education, 
+  data = wages)
+print(wages.lm)
+
+beta.1.hat = cov(wages$education, 
+  wages$logwage) / var(wages$education)
+beta.0.hat = mean(wages$logwage) - 
+  beta.1.hat * mean(wages$education)
+
+print(c(beta.0.hat, beta.1.hat))
+print(coef(wages.lm))
+
+sigma.hat = sqrt(sum(resid(wages.lm)^2) / 
+    wages.lm$df.resid)
+c(sigma.hat, sqrt(sum((wages$logwage - 
+    predict(wages.lm))^2) / wages.lm$df.resid))
+
+summary(wages.lm)
+```
+
+- Let's perform this test for the wage data.
+
+
+```{r}
+SE.beta.1.hat = (sigma.hat * sqrt(1 / 
+    sum((wages$education - mean(wages$education))^2)))
+Tstat = (beta.1.hat - 0) / SE.beta.1.hat
+data.frame(beta.1.hat, SE.beta.1.hat, Tstat)
+
+```
+
+## Wage example
+- Let's look at the output of the `lm` function again.
+
+```{r}
+summary(wages.lm)
+```
+
+## Wage example
+- We see that *R* performs this test in the second row of the `Coefficients` table. 
+- It is clear that wages are correlated with education.
+
+## Why reject for large |T|?
+
+- Observing a large $|T|$ is unlikely if $\beta_1 = \beta_1^0$: reasonable to conclude that $H_0$ is false.
+
+- Common to report $p$-value:
+$$\mathbb{P}(|T_{n-2}| \geq |T_{obs}|) = 2 \mathbb{P} (T_{n-2} \geq |T_{obs}|)$$
+```{r}
+2*(1 - pt(Tstat, wages.lm$df.resid))
+```
+
+## Confidence interval based on Student's $t$ distribution
+
+- Suppose we have a parameter estimate $\widehat{\theta} \sim N(\theta, {\sigma}_{\theta}^2)$, and standard error $SE(\widehat{\theta})$ such that
+   $$\frac{\widehat{\theta}-\theta}{SE(\widehat{\theta})} \sim t_{\nu}.$$
+
+- We can find a $(1-\alpha) \cdot 100 \%$ confidence interval by:
+   $$\widehat{\theta} \pm SE(\widehat{\theta}) \cdot t_{\nu, 1-\alpha/2}.$$
+   
+- To prove this, expand the absolute value as we did for the one-sample CI $$1 - \alpha \leq \mathbb{P}_{\theta}\left(\left|\frac{\widehat{\theta} - \theta}{SE(\widehat{\theta})} \right| < t_{\nu, 1-\alpha/2}\right).$$
+
+
+## Confidence interval for regression parameters
+
+- Applying the above to the parameter $\beta_1$ yields a confidence interval of the form
+$$\hat{\beta}_1 \pm SE(\hat{\beta}_1) \cdot t_{n-2, 1-\alpha/2}.$$
+   
+- We will need to compute $SE(\hat{\beta}_1)$. This can be computed using this formula
+   $$SE(a_0\hat{\beta}_0 + a_1\hat{\beta}_1) = \hat{\sigma} \sqrt{\frac{a_0^2}{n} + \frac{(a_0\overline{X} - a_1)^2}{\sum_{i=1}^n \left(X_i-\overline{X}\right)^2}}$$
+with $(a_0,a_1) = (0, 1)$.
+
+
+## Confidence interval for regression parameters
+
+- We also need to find the quantity $t_{n-2,1-\alpha/2}$. This is defined by
+$$
+\mathbb{P}(T_{n-2} \geq t_{n-2,1-\alpha/2}) = \alpha/2.
+$$
+
+## 
+- In *R*, this is computed by the function `qt`.
+
+```{r}
+alpha = 0.05
+n = nrow(wages); n
+qt(1-0.5*alpha, n-2)
+```
+
+##
+- Not surprisingly, this is close to that of the normal distribution, which is a Student's $t$ with $\infty$ for degrees of freedom.
+```{R}
+qnorm(1 - 0.5*alpha)
+```
+
+- We will not need to use these explicit formulae all the time, as *R* has some built in functions to compute confidence intervals.
+
+##
+```{R}
+L = beta.1.hat - 
+  qt(0.975, wages.lm$df.resid) * SE.beta.1.hat
+U = beta.1.hat + 
+  qt(0.975, wages.lm$df.resid) * SE.beta.1.hat
+data.frame(L, U)
+
+confint(wages.lm)
+```
+
+# Predictions
+
+## The estimation of the mean response
+- Given $Y = \beta_{0} + \beta_{1}x + \epsilon$ and the least squares estimators of $\beta_{0}$ and $\beta_{1}$ are $\hat{\beta}_{0}$ and $\hat{\beta}_{1}$, respectively.
+- For a chosen value $x_{0}$, what is the prediction value of the **mean response variable**?
+    - We need to estimate $\E \left[Y\vert x_{0}\right] = \beta_{0}+\beta_{1}x_{0}$.
+    - Let $\E \left[Y\vert x_{0}\right] = \mu_{0}$ so $\mu_{0} = \beta_{0}+\beta_{1}x_{0}$.
+    - The best estimator for $\mu_{0}$ is $\hat{\mu}_{0} = \hat{\beta}_{0}+\hat{\beta_{1}}x_{0}$.
+- $\V \left[ \hat{\mu}_{0}\right] = \V \left[\hat{\beta}_{0}+\hat{\beta_{1}}x_{0} \right]$.
+- $\text{SE}\left(\hat{\mu}_{0} \right) = \hat{\sigma}\sqrt{ \dfrac{1}{n} + \dfrac{\left(x_{0} -\bar{x} \right)^2}{\sum_{i=1}^{n}\left(x_{i}-\bar{x}\right)^{2}}},$ $\hat{\sigma}^{2} = \dfrac{SSE}{n-2}$.
+    - The estimation is much more accurate around $\bar{x}$.
+- $\hat{\mu}_{0} \sim \text{N}\left(\mu_{0},  \V \left[ \hat{\mu}_{0}\right]\right)$.
+
+## Predicting the response of an individual observation
+- Given $Y = \beta_{0} + \beta_{1}x + \epsilon$ and the least squares estimators of $\beta_{0}$ and $\beta_{1}$ are $\hat{\beta}_{0}$ and $\hat{\beta}_{1}$, respectively.
+- For a chosen value $x_{0}$, what is the prediction value of the response variable $Y_{0}$? Here $Y_{0}$ is a random variable.
+    - $Y_{0} \sim \text{N} \left(\E\left[Y\vert x_{0} \right], \sigma^{2} \right)$.
+    - We took $\E\left[Y\vert x_{0} \right] = \mu_{0}$.
+    - The best estimator for $Y_{0}$ is $\hat{\mu}_{0} = \hat{\beta}_{0}+\hat{\beta_{1}}x_{0}$
+    <!-- - $\hat{Y}_{0} = \hat{\beta}_{0}+\hat{\beta_{1}}x_{0}$ -->
+    <!-- - $\E \left[ \hat{Y}_{0}\right] = \beta_{0}+\beta_{1}x_{0}$ -->
+<!-- - $\V \left[ \hat{Y}_{0}\right] = \E \left[\left(\hat{Y}_{0} - \E \hat{Y}_{0} \right)^2 \right] = \E \left[\left(\hat{\beta}_{0}+\hat{\beta_{1}}x_{0} - \beta_{0}-\beta_{1}x_{0} - \epsilon_{0}\right)^2 \right]$. -->
+- The predicted response distribution is the predicted distribution of the residuals $Y_{0} - \hat{\mu}_{0}$ at the given point $x_{0}$. So the variance is given by
+$\V \left[Y_{0} -  \hat{\mu}_{0}\right] = \V \left[Y_{0}\right]+ \V \left[\hat{\mu}_{0}\right]$
+- $\text{SE}\left(\hat{Y}_{0} \right) = \hat{\sigma}\sqrt{1 + \dfrac{1}{n} + \dfrac{\left(x_{0} -\bar{x} \right)^2}{\sum_{i=1}^{n}\left(x_{i}-\bar{x}\right)^{2}}}.$
+
+
+## Comparing SE of predicted response and mean response
+- $\text{SE}\left(\hat{Y}_{0} \right) > \text{SE}\left(\hat{\mu}_{0} \right)$.
+    - Greater uncertainity in predicting one observation than in estimating the mean response.
+    - Averaging in the mean response reduces the variability.
+
+## Confidence interval for mean response
+- We can show that $$\dfrac{ \hat{\mu}_{0} - \mu_{0}}{\text{SE}\left(\hat{\mu}_{0} \right)} \sim t_{n-2}.$$
+    - $\left(1 - \alpha \right)100\%$ confidence interval for $\mu_{0}$ is $$\hat{\mu}_{0} \pm t_{n-2, \alpha/2} \text{SE}\left(\hat{\mu}_{0}\right).$$
+    - Confidence limits.
+    
+
+## Prediction interval
+- We can show that $$\dfrac{ \hat{Y}_{0} - Y_{0}}{\text{SE}\left(\hat{Y}_{0} \right)} \sim t_{n-2}.$$
+    - $\left(1 - \alpha \right)100\%$ prediction interval for $Y_{0}$ is $$\hat{Y}_{0} \pm t_{n-2, \alpha/2} \text{SE}\left(\hat{Y}_{0}\right).$$
+    - Prediction limits.
+    
+
+    
+## Wages vs. education example
+
+- Construct CI for the mean response for a sequence of $x$.
+```{r}
+url = 'http://www.stanford.edu/class/stats191/data/wage.csv'
+wages = read.table(url, sep=',', 
+  header=TRUE)
+wages.lm = lm(logwage ~ education, 
+  data = wages)
+xval = data.frame(education = seq(min(wages$education), 
+  max(wages$education), length.out = 100))
+prediction_bands = predict(wages.lm, xval, 
+  interval = "prediction")
+```
+
+##
+```{r echo=FALSE}
+ggplot() + 
+  geom_point(data = wages, 
+    mapping = aes(x = education, y = logwage)) +
+  theme_bw() + 
+  geom_line(aes(x = xval$education, y = as.vector(prediction_bands[ ,"lwr"])), 
+    color = "blue", linetype = "dashed") + 
+  geom_line(aes(x = xval$education, y = as.vector(prediction_bands[ ,"upr"])), 
+    color = "blue", linetype = "dashed")
+```
+
+##
+
+- Construct prediction intervals for the response for a sequence of $x$.
+
+```{r}
+xval = data.frame(education = 
+    seq(min(wages$education), 
+      max(wages$education), length.out = 100))
+confidence_bands = predict(wages.lm, xval, 
+  interval = "confidence")
+```
+
+##
+```{r echo=FALSE}
+ggplot() + 
+  geom_point(data = wages, 
+    mapping = aes(x = education, y = logwage)) +
+  theme_bw() + 
+  geom_line(aes(x = xval$education, y = as.vector(prediction_bands[ ,"lwr"]), 
+    color = "blue"), linetype = "dashed") + 
+  geom_line(aes(x = xval$education, y = as.vector(prediction_bands[ ,"upr"]), 
+    color = "blue"), linetype = "dashed") +
+  geom_line(aes(x = xval$education, y = as.vector(confidence_bands[ ,"lwr"]), color = "red"), linetype = "dotted") +
+  geom_line(aes(x = xval$education, y = as.vector(confidence_bands[ ,"upr"]), color = "red"), linetype = "dotted") + scale_color_discrete(name = "", labels = c("pred", "conf"))
+```
+
+
+##  References for this lecture
+
+- Based on the lecture notes of  [\blc Jonathan Taylor \bc](http://statweb.stanford.edu/~jtaylo/).
+
+
+
+
+

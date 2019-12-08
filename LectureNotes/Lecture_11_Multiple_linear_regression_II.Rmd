@@ -1,0 +1,297 @@
+---
+title: "Lecture 11: Multiple linear regression"
+shorttitle: "STATS 191 Lecture 11"
+author: "Pratheepa Jeganathan"
+date: "10/16/2019"
+output: 
+  beamer_presentation:
+    colortheme: "seahorse"
+    slide_level: 2
+    includes:
+      in_header: header.tex
+bibliography: AppliedStat.bib
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 7, fig.height = 4, message=FALSE, warning=FALSE, cache = TRUE)
+set.seed(0)
+library(ggplot2)
+```
+
+
+## Recap
+
+- What is a regression model?
+- Descriptive statistics -- graphical
+- Descriptive statistics -- numerical
+- Inference about a population mean
+- Difference between two population means
+- Some tips on R
+
+## Recap
+
+- Simple linear regression (covariance, correlation, estimation, geometry of least squares)
+    - Inference on simple linear regression model
+    - Goodness of fit of regression: analysis of variance.
+    - $F$-statistics.
+    - Residuals.
+    - Diagnostic plots for simple linear regression (graphical methods).
+
+## Recap
+- Multiple linear regression
+    - Specifying the model.
+    - Fitting the model: least squares.
+    - Interpretation of the coefficients.
+   
+# Multiple linear regression
+
+## Outline
+
+-   More on $F$-statistics.
+-   Matrix approach to linear regression.
+-   $T$-statistics revisited.
+-   More $F$ statistics.
+<!-- -   Tests involving more than one $\beta$. -->
+
+## Goodness of fit for multiple regression
+
+- After fitting the multiple regression model, we can define the sum of squares as follows:
+
+$$\begin{aligned}
+   SSE &= \sum_{i=1}^n(Y_i - \widehat{Y}_i)^2 \\
+   SSR &= \sum_{i=1}^n(\overline{Y} - \widehat{Y}_i)^2 \\
+   SST &= \sum_{i=1}^n(Y_i - \overline{Y})^2 = SSE + SSR.
+   \end{aligned}$$ 
+   
+- $R^2$ is called the *multiple correlation coefficient* of the model, or the *coefficient of multiple determination*.
+
+- The sums of squares and $R^2$ are defined analogously
+to those in simple linear regression.
+$$R^{2} = \dfrac{SSR}{SST}.$$
+
+```{r include=FALSE}
+# if not installed, install the package
+if(!("ElemStatLearn" %in% installed.packages())){
+  install.packages("ElemStatLearn")
+}
+library(xtable)
+library(ElemStatLearn)
+data(prostate)
+prostate.lm = lm(lpsa ~ lcavol + lweight + 
+    age + lbph + svi + lcp + pgg45, 
+  data = prostate)
+```
+
+## Example (sum of squares and mean squares)
+```{r}
+Y = prostate$lpsa
+n = length(Y)
+SST = sum((Y - mean(Y))^2)
+# degrees of freedom for SST is (n-1)
+MST = SST / (n - 1) 
+SSE = sum(resid(prostate.lm)^2)
+# degrees of freedom for SSE (n-p-1) 
+# for an intercept model 
+MSE = SSE / prostate.lm$df.residual 
+SSR = SST - SSE
+# degrees of freedom for SSR = 
+# degrees of freedom for SST - 
+# degrees of freedom for SSE = 
+# p (if we consider an intercept model)
+MSR = SSR / (n - 1 - prostate.lm$df.residual) 
+```
+
+## Example (sum of squares and mean squares)
+```{r}
+print(c(SST, SSE, SSR))
+print(c(MST,MSE,MSR))
+```
+
+## Adjusted $R^2$
+
+- As we add more and more variables to the model – even random ones, $R^2$ will increase to 1.
+
+- Adjusted $R^2$ tries to take this into account by replacing sums of squares by *mean squares*
+    $$R^2_a = 1 - \frac{SSE/(n-p-1)}{SST/(n-1)} = 1 - \frac{MSE}{MST}.$$
+
+## Example (Adjusted $R^2$)
+
+```{r}
+round(1 - MSE/MST, digits = 3)
+round(summary(prostate.lm)$adj.r.squared, digits = 3)
+```
+
+## Goodness of fit test
+
+- For the intercept model with $p$ predictors, the analysis of variance (ANOVA) table is as follows:
+
+\begin{table}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+Source & df & SS & MS & F-statistic\\
+\hline
+Regression & $p$ & $\text{SSR} = \sum_{i=1}^n(\overline{Y} - \widehat{Y}_i)^2$  & $\text{MSR}= \dfrac{\text{SSR}}{p}$ & $\text{F} = \dfrac{MSR}{MSE}$\\
+
+Error & $n - p -1$ & $\text{SSE} =\sum_{i=1}^n(Y_i - \widehat{Y}_i)^2$ & $\text{MSE}= \dfrac{\text{SSE}}{n-p-1}$ & \\
+
+Total & $n-1$ & $\text{SST} = \sum_{i=1}^n(Y_i - \overline{Y})^2$ & $\text{MST}= \dfrac{\text{SST}}{n-1}$ & \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+## Goodness of fit test
+
+- As in simple linear regression, we measure the goodness of fit of the regression model by
+    $$F = \frac{MSR}{MSE}.$$
+
+-   Under $H_0:\beta_1 = \dots = \beta_p=0$, $$F \sim F_{p, n-p-1}$$ so
+    reject $H_0$ at level $\alpha$ if $F > F_{p,n-p-1,1-\alpha}.$
+
+## 
+
+![Summary of prostate data multiple linear regression](summary_prostrate.png)
+
+## $F$-test revisited
+
+The $F$ test can be thought of as comparing two models:
+
+- *Full (bigger) model :*
+$$Y_i = \beta_0 + \beta_1 X_{i1} + \dots \beta_p X_{ip} + \varepsilon_i$$
+
+- *Reduced (smaller) model:*
+$$Y_i = \beta_0  + \varepsilon_i$$
+
+- The $F$-statistic has the form
+    $$F=\frac{(SSE(R) - SSE(F)) / (df_R - df_F)}{SSE(F) / df_F}.$$
+
+- **Note: the smaller model should be nested within the bigger model.**
+
+## Example 
+```{r}
+prostate.lm.reduced = lm(lpsa ~ 1, data = prostate)
+anova(prostate.lm.reduced, prostate.lm)
+```
+
+## Matrix formulation
+- $$\begin{pmatrix} 
+Y_{1} \\ Y_{2} \\ \vdots \\Y_{n} 
+\end{pmatrix} = \begin{pmatrix} 
+1 & X_{11} & \cdots  X_{1p} \\
+1 & X_{21} & \cdots  X_{2p}\\
+\vdots & \vdots & \vdots & \vdots\\
+1 & X_{n1} & \cdots  X_{np}
+\end{pmatrix} \begin{pmatrix}
+\beta_{0} \\ \beta_{1} \\ \vdots \\ \beta_{p}
+\end{pmatrix} + \begin{pmatrix}
+\epsilon_{1} \\ \epsilon_{2} \\ \vdots \\ \epsilon_{n}
+\end{pmatrix}.$$
+
+- In matrix form: $${\vY}_{n \times 1} = {\mX}_{n \times (p + 1)} {\vbeta}_{(p+1) \times 1} + {\vep}_{n \times 1}$$
+
+- ${\mX}$ is called the *design matrix* of the model
+
+- ${\vep} \sim N(0, \sigma^2 \mI_{n \times n})$ is multivariate normal
+
+## $SSE$ in matrix form
+
+$$SSE(\vbeta) = ({\vY} - {\mX} {\vbeta})^{T}({\vY} - {\mX} {\vbeta}) = \|\vY-\mX \vbeta\|^2_2$$
+
+## Design matrix
+
+-   The **design matrix** is the $n \times (p+1)$ matrix with entries
+    $$\mX =
+       \begin{pmatrix}
+       1 & X_{11} & X_{12} & \dots & X_{1p} \\
+       1 & X_{21} & X_{22} & \dots & X_{2p} \\
+       \vdots &   \vdots & \ddots & \vdots \\
+       1 & X_{n1} & X_{n2} &\dots & X_{np} \\
+       \end{pmatrix}.$$
+
+## Example (design matrix)
+```{r}
+n = nrow(prostate)
+attach(prostate)
+X = cbind(rep(1,n), lcavol, 
+  lweight, age, lbph, svi, lcp, pgg45)
+detach(prostate)
+colnames(X)[1] = '(Intercept)'
+```
+
+## Example (design matrix)
+```{r results = 'asis', message=FALSE}
+print(xtable(head(X)))
+```
+
+## Example (design matrix)
+- The matrix $\mX$ is the same as formed by `R`
+
+```{r results = 'asis', message=FALSE}
+print(xtable(head(model.matrix(prostate.lm))))
+
+```
+
+## Least squares solution
+
+- $\text{SSE}(\vbeta) = ({\vY} - {\mX} {\vbeta})^{T}({\vY} - {\mX} {\vbeta}) = \vY^{T}\vY-2\vbeta^{T}\mX^{T}\vY + \vbeta^{T}\mX^{T}\mX\vbeta$
+
+- Using matrix differentiation $\frac{\partial}{\partial \vbeta}\text{SSE}(\vbeta) = -2\mX^{T}\vY+2\mX^{T}\mX\vbeta.$
+ 
+- Normal equations
+    $$\frac{\partial}{\partial \vbeta} \text{SSE}(\vbeta) \biggl|_{\vbeta = \widehat{\vbeta}_{}} = -2 \left({\vY} - {\mX} \widehat{\vbeta}_{} \right)^T \mX = 0, \qquad 0 \leq j \leq p.$$
+
+- Equivalent to 
+$$\begin{aligned}
+  ({\vY} - {\mX}{\widehat{\vbeta}})^{T}{\mX} & = 0 \\
+  {\widehat{\vbeta}} &= ({\mX}^{T}{\mX})^{-1}{\mX}^{T}{\vY}
+\end{aligned}$$
+
+-   Properties: the sampling distribution of $\widehat{\vbeta}$: $$\widehat{\vbeta} \sim N(\vbeta, \sigma^2 (\mX^{T}\mX)^{-1}).$$
+
+## Multivariate Normal
+
+- To obtain the distribution of $\hat{\vbeta}$ we used the following fact about the multivariate normal distribution.
+
+- Suppose $\vZ \sim N(\vmu,\mSigma)$, where $\vZ$ is $p$ dimensional vector. Then, for any fixed matrix $\mA$
+
+$$\mA \vZ \sim N(\mA\vmu, \mA\mSigma \mA^{T}).$$
+
+(It goes without saying that the dimensions of the matrix $\mA$ must agree with those of $\vZ$.)
+
+## How did we derive the distribution of $\hat{\vbeta}$?
+
+- Above, we saw that $\hat{\vbeta}$ is equal to a matrix times $\vY$. The matrix form of our model is
+$$
+\vY \sim N(\mX\vbeta, \sigma^2 \mI).
+$$
+
+- Therefore,
+$$
+\begin{aligned}
+\hat{\vbeta} &\sim N\left((\mX^{T}\mX)^{-1}\mX^{T} (\mX\vbeta), (\mX^{T}\mX)^{-1}\mX^{T} \mX (\sigma^2 \mI) (\mX^{T}\mX)^{-1}\right) \\
+&\sim N(\vbeta, \sigma^2 (\mX^{T}\mX)^{-1}).
+\end{aligned}
+$$
+
+## Example (Least squares solution)
+
+- Let's verify our equations for $\hat{\vbeta}$.
+
+```{r}
+Y = prostate$lpsa
+X = model.matrix(prostate.lm)
+beta_hat = as.numeric(solve(t(X) %*% X) 
+  %*% t(X) %*% Y)
+names(beta_hat) = colnames(X)
+```
+
+## Example (Least squares solution)
+```{r results = 'asis'}
+print(xtable(data.frame(beta_hat, coef(prostate.lm))))
+```
+
+## References
+- **CH** Chapter 3.7-3.8, Appendix Page 89-91.
+- Lecture notes of  [\blc Jonathan Taylor \bc](http://statweb.stanford.edu/~jtaylo/).

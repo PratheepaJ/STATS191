@@ -1,0 +1,297 @@
+---
+title: "Lecture 15: Multiple linear regression"
+shorttitle: "STATS 191 Lecture 15"
+author: "Pratheepa Jeganathan"
+date: "10/25/2019"
+output: 
+  beamer_presentation:
+    colortheme: "seahorse"
+    slide_level: 2
+    includes:
+      in_header: header.tex
+bibliography: AppliedStat.bib
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 7, fig.height = 4, message=FALSE, warning=FALSE, cache = TRUE)
+set.seed(0)
+library(ggplot2)
+```
+
+
+## Recap
+
+- What is a regression model?
+- Descriptive statistics -- graphical
+- Descriptive statistics -- numerical
+- Inference about a population mean
+- Difference between two population means
+- Some tips on R
+- Simple linear regression (covariance, correlation, estimation, geometry of least squares)
+    - Inference on simple linear regression model
+    - Goodness of fit of regression: analysis of variance.
+    - $F$-statistics.
+    - Residuals.
+    - Diagnostic plots for simple linear regression (graphical methods).
+
+## Recap
+- Multiple linear regression
+    - Specifying the model.
+    - Fitting the model: least squares.
+    - Interpretation of the coefficients.
+    - Inference for multiple regression
+        - $T$-statistics revisited.
+   
+
+## Outline
+- Inference for multiple regression
+    - More $F$ statistics.
+    - Tests involving more than one $\beta$.
+
+# Inference for multiple regression
+
+```{r include=FALSE}
+library(xtable)
+library(ElemStatLearn)
+data(prostate)
+prostate.lm = lm(lpsa ~ lcavol + lweight + 
+    age + lbph + svi + lcp + pgg45, 
+  data = prostate)
+n = nrow(prostate)
+Y = prostate$lpsa
+X = model.matrix(prostate.lm)
+beta_hat = as.numeric(solve(t(X) %*% X) 
+  %*% t(X) %*% Y)
+names(beta_hat) = colnames(X)
+```
+
+```{r include=FALSE}
+Y.hat = X %*% beta_hat
+sigma.hat = sqrt(sum((Y - Y.hat)^2) 
+  / (n - ncol(X)))
+cov.beta_hat = sigma.hat^2 * solve(t(X) %*% X)
+```
+
+## Questions about many (combinations) of $\beta_j$’s
+
+- In multiple regression we can ask more complicated questions than in simple regression.
+
+- For instance, we could ask whether `lcp` and `pgg45` 
+explains little of the variability in the data, and might be dropped from the regression model.
+
+- These questions can be answered by $F$-statistics.
+
+- **Note: This hypothesis should really be formed *before* looking at the output of `summary`.**
+
+- Later we'll see some examples of the messiness when forming a hypothesis after seeing the `summary`.
+
+## Dropping one or more variables
+
+- Suppose we wanted to test the above hypothesis.
+- Formally, the null hypothesis is: $$ H_0: \beta_{\tt lcp} (=\beta_6) =\beta_{\tt pgg45} (=\beta_7) =0$$ and the alternative is $$H_a = \text{one of $ \beta_{\tt lcp},\beta_{\tt pgg45}$ is not 0}.$$
+
+- This test is an $F$-test based on two models 
+$$\begin{aligned}
+       \text{Reduced} (\text{H}_{0}): Y_i &= \beta_0 + \sum_{j=1}^5 \beta_j X_{ij} + \varepsilon_i \\
+       \text{Full} (\text{H}_{a}): Y_i &= \beta_0 + \sum_{j=1}^7  X_{ij} \beta_j + \varepsilon_i 
+       \end{aligned}$$
+
+- **Note: The reduced model $R$ must be a special case of the full model $F$ to use the $F$-test. **
+
+## $SSE$ of a model
+
+- A “model”, ${\cal M}$ is a subspace of $\mathbb{R}^{n}$ (e.g. column space of ${X}$).
+- Least squares fit = projection onto the subspace of ${\cal M}$, yielding predicted values $\widehat{Y}_{{\cal M}}$
+
+- Error sum of squares: $$SSE({\cal M}) = \|Y - \widehat{Y}_{{\cal M}}\|^2.$$
+
+## $F$-statistic for $H_0:\beta_{\tt lcp}=\beta_{\tt pgg45}=0$
+
+- We compute the $F$ statistic the same to compare any models $$\begin{aligned} F &=\frac{\frac{SSE(R) - SSE(F)}{2}}{\frac{SSE(F)}{n-1-p}} \\
+       & \sim F_{2, n-p-1} \qquad   (\text{if $H_0$ is true})
+       \end{aligned}$$
+
+-   Reject $H_0$ at level $\alpha$ if $F \geq F_{1-\alpha, 2, n-1-p}$.
+
+- When comparing two models, one a special case of the other (i.e. one nested in the other), we can test if the smaller
+model (the special case) is roughly as good as the 
+larger model in describing our outcome. This is typically
+tested using an *F* test based on comparing
+the two models. The following function does this.
+ 
+## 
+```{R}
+f.test.lm = function(R.lm, F.lm) {
+    SSE.R = sum(resid(R.lm)^2)
+    SSE.F = sum(resid(F.lm)^2)
+    df.num = R.lm$df - F.lm$df
+    df.den = F.lm$df
+    F = ((SSE.R - SSE.F) / df.num) / (SSE.F / df.den)
+    p.value = 1 - pf(F, 
+      df.num, df.den)
+    return(data.frame(F, 
+      df.num, df.den, p.value))
+}
+```
+
+- `R` has a function that does essentially the same thing as `f.test.lm`: the function is `anova`. It can be used several ways, but it can be used to compare two models.
+
+## 
+```{r}
+prostate.lm.reduced = lm(lpsa ~ lcavol + 
+    lbph + lweight + age + svi, 
+  data=prostate)
+print(f.test.lm(prostate.lm.reduced, prostate.lm))
+anova(prostate.lm.reduced, prostate.lm)
+```
+
+## Dropping an arbitrary subset
+
+- For an arbitrary model, suppose we want to test
+   $$\begin{aligned}
+   H_0:&\beta_{i_1}=\dots=\beta_{i_j}=0 \\
+   H_a:& \text{one or more of $\beta_{i_1}, \dots \beta_{i_j} \neq 0$}
+   \end{aligned}
+   $$ for some subset $\{i_1, \dots, i_j\} \subset \{0, \dots, p\}$.
+   
+- You guessed it: it is based on the two models: $$\begin{aligned}
+       R: Y_i &= \sum_{l=0, l \not \in \{i_1, \dots, i_j\}}^p \beta_l X_{il} + \varepsilon_i \\
+       F: Y_i &=  \sum_{l=0}^p \beta_l X_{il} + \varepsilon_i \\
+       \end{aligned}$$ where $X_{i0}=1$ for all $i$.
+
+- **Note: This hypothesis should really be formed *before* looking at the output of `summary`. Looking at `summary` before deciding which to drop is problematic!**
+
+## Dropping an arbitrary subset
+ 
+ - Statistic: $$ \begin{aligned}
+   F &=\frac{\frac{SSE(R) - SSE(F)}{j}}{\frac{SSE(F)}{n-p-1}} \\
+   & \sim F_{j, n-p-1} \qquad    (\text{if $H_0$ is true})
+   \end{aligned}
+   $$
+   
+ - Reject $H_0$ at level $\alpha$ if $F \geq F_{1-\alpha, j, n-1-p}$.
+
+## General $F$-tests
+
+- Given two models $R \subset F$ (i.e. $R$ is a subspace of $F$), we can consider testing $$H_0: \text{$R$ is adequate (i.e. $\mathbb{E}(Y) \in R$)} $$ vs. $$ H_a: \text{$F$ is adequate (i.e. $\mathbb{E}(Y) \in F$)}$$
+    
+- The test statistic is $$F = \frac{(SSE(R) - SSE(F)) / (df_R - df_F)}{SSE(F)/df_F}.$$
+
+- If $H_0$ is true, $F \sim F_{df_R-df_F, df_F}$ so we reject $H_0$ at level $\alpha$ if $F \geq F_{1-\alpha, df_R-df_F, df_F}$.
+
+
+## Constraining $\beta_{\tt lcavol}=\beta_{\tt svi}$ 
+
+- In this example, we might suppose that the coefficients for `lcavol` and `svi` are the same and want to test this. We do this, again, by comparing a "full model" and a "reduced model".
+-   Full model:
+    $$\begin{aligned}
+    Y_i &= \beta_0 + \beta_1 X_{i,{\tt lcavol}}  + \beta_2 X_{i,{\tt lweight}} + \beta_3 X_{i, {\tt age}} \\
+    & \qquad+ \beta_4 X_{i,{\tt lbph}} + \beta_5 X_{i, {\tt svi}} + \beta_6  X_{i, {\tt lcp}} + \beta_7 X_{i, {\tt pgg45}} + \varepsilon_i
+    \end{aligned}
+    $$
+
+-   Reduced model: $$\begin{aligned}
+    Y_i &= \beta_0 + \tilde{\beta}_1 X_{i,{\tt lcavol}}  + \beta_2 X_{i,{\tt lweight}} + \beta_3 X_{i, {\tt age}} \\
+    & \qquad+ \beta_4 X_{i,{\tt lbph}} + \tilde{\beta}_1 X_{i, {\tt svi}} + \beta_6  X_{i, {\tt lcp}} + \beta_7 X_{i, {\tt pgg45}} + \varepsilon_i
+    \end{aligned}
+    $$
+    
+
+## Example 
+```{r}
+prostate$Z = prostate$lcavol + prostate$svi
+equal.lm = lm(Y ~ Z + lweight + age + 
+    lbph + lcp + pgg45, data = prostate)
+f.test.lm(equal.lm, prostate.lm)
+```
+
+## Constraining $\beta_{\tt lcavol}+\beta_{\tt svi}=1$ 
+
+- Full model:
+$$\begin{aligned}
+    Y_i &= \beta_0 + \beta_1 X_{i,{\tt lcavol}}  + \beta_2 X_{i,{\tt lweight}} + \beta_3 X_{i, {\tt age}} \\
+    & \qquad+ \beta_4 X_{i,{\tt lbph}} + \beta_5 X_{i, {\tt svi}} + \beta_6  X_{i, {\tt lcp}} + \beta_7 X_{i, {\tt pgg45}} + \varepsilon_i
+    \end{aligned}$$
+
+-   Reduced model: 
+    $$\begin{aligned}
+    Y_i &= \beta_0 + \tilde{\beta}_1 X_{i,{\tt lcavol}}  + \beta_2 X_{i,{\tt lweight}} + \beta_3 X_{i, {\tt age}} \\
+    & \qquad+ \beta_4 X_{i,{\tt lbph}} + (1 - \tilde{\beta}_1) X_{i, {\tt svi}} + \beta_6  X_{i, {\tt lcp}} + \beta_7 X_{i, {\tt pgg45}} + \varepsilon_i
+    \end{aligned}
+    $$
+    
+
+## Example
+```{r}
+prostate$Z2 = prostate$lcavol - prostate$svi
+constrained.lm = lm(lpsa ~ Z2 + lweight + age + 
+    lbph + lcp + pgg45, 
+  data=prostate, offset=svi)
+anova(constrained.lm, prostate.lm)
+f.test.lm(constrained.lm, prostate.lm)
+```
+
+##
+- What we had to do above was subtract *X3* from *Y* on the right hand side of the formula. R has a way to do this called using an *offset*. What this does is it subtracts this vector from $Y$ before fitting.
+
+## General linear hypothesis
+
+- An alternative version of the $F$ test can be derived that does not require refitting a model.
+
+- Suppose we want to test $$H_0:C_{q \times (p+1)}\beta_{(p+1) \times 1} = h$$ versus
+$$H_a :C_{q \times (p+1)}\beta_{(p+1) \times 1} \neq h.$$
+
+- This can be tested via an $F$ test:
+$$F = \frac{(C\hat{\beta}-h)^T \left(C(X^TX)^{-1}C^T \right)^{-1} (C\hat{\beta}-h) / q}{SSE(F) / df_F} \overset{H_0}{\sim} F_{q, n-p-1}. $$
+
+**Note: we are assuming that $\text{rank}(C(X^TX)^{-1}C^T)=q$.**
+
+## 
+- Here's a function that implements this computation.
+
+```{r}
+general.linear = function(model.lm, 
+  linear_part, null_value=0) {
+    # shorthand
+    C = linear_part
+    h = null_value
+    
+    beta.hat = coef(model.lm)
+    V = as.numeric(C %*% beta.hat - null_value)
+    # the MSE is included in vcov
+    invcovV = solve(C %*% vcov(model.lm) %*% t(C)) 
+    
+    df.num = nrow(C)
+    df.den = model.lm$df.resid
+    F = t(V) %*% invcovV %*% V / df.num
+    p.value = 1 - pf(F, df.num, df.den)
+    return(data.frame(F, df.num, 
+      df.den, p.value))
+}
+```
+
+## Example (General linear hypothesis)
+- Let's test verify this work with our test for testing $\beta_{\tt lcp}=\beta_{\tt pgg45}=0$.
+
+```{r}
+A = matrix(0, nrow = 2, ncol = 8)
+A[1,7] = 1
+A[2,8] = 1
+print(A)
+```
+
+- Rank of $\mA$
+```{r}
+qr(A)$rank
+```
+
+## Example (General linear hypothesis)
+```{r}
+general.linear(prostate.lm, A)
+f.test.lm(prostate.lm.reduced, prostate.lm)
+```
+
+## References
+- **CH** Chapter 3.10, 3.12
+- Lecture notes of  [\blc Jonathan Taylor \bc](http://statweb.stanford.edu/~jtaylo/).
