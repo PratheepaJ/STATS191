@@ -4,7 +4,10 @@ Class_list/
 Demo/
 EndTerm/
 Grading/
-HomeworkAssignments/
+HomeworkAssignments/*.pdf
+HomeworkAssignments/Homework_Assignment_7_Question_2_correction.png
+HomeworkAssignments/Student_homework_submission/
+HomeworkAssignments/rainfall.csv
 MidTerm/
 MyNotes/
 Quiz/

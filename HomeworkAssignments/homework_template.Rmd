@@ -1,0 +1,54 @@
+---
+title: 'STATS 191: Homework Assignment 1'
+author: "Pratheepa Jeganathan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  pdf_document:
+    includes:
+      in_header: header.tex
+bibliography: AppliedStat.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Learning goals
+
+\newpage
+
+##  Solution 1
+
+Explain your solution: 
+Model $Y = \theta X+ \epsilon$
+
+```{r}
+data(cars)
+d = cars
+fit_lm  = lm(speed ~ dist, data = cars)
+summary(fit_lm)
+```
+
+\newpage
+
+## Solution 2
+
+Use the variables that we defined in the __header.tex__ file.
+
+$\vY = \mX \vbeta + \vep$
+
+\newpage
+
+## Solution 3
+
+Cite our textbook [@chatterjee2015]
+
+\newpage
+
+## Solution 4
+
+\rc Highlight in color \bc Note: we need to define these commands in header.tex.
+
+\newpage
+
+## References
